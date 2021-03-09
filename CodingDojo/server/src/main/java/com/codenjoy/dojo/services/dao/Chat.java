@@ -39,9 +39,16 @@ public class Chat {
 
     public Chat(ConnectionThreadPoolFactory factory) {
         pool = (CrudPrimaryKeyConnectionThreadPool) factory.create(
-                "CREATE TABLE IF NOT EXISTS messages (" +
+                "CREATE TABLE IF NOT EXISTS topics (" +
                         "id integer_primary_key, " +
                         "chat_id varchar(255), " +
+                        "player_id varchar(255), " +
+                        "time varchar(255), " +
+                        "text varchar(255));",
+
+                "CREATE TABLE IF NOT EXISTS messages (" +
+                        "id integer_primary_key, " +
+                        "topic_id integer, " +
                         "player_id varchar(255), " +
                         "time varchar(255), " +
                         "text varchar(255));"
@@ -57,15 +64,15 @@ public class Chat {
      *        для текущего чата {@param chatId},
      *        посортированных в порядке возрастания времени
      */
-    public List<Message> getMessages(String chatId, int count) {
+    public List<Topic> getTopics(String chatId, int count) {
         return pool.select("SELECT * FROM " +
-                        "(SELECT * FROM messages " +
+                        "(SELECT * FROM topics " +
                         "WHERE chat_id = ? " +
                         "ORDER BY time DESC " +
                         "LIMIT ?)" +
                         "ORDER BY time ASC;",
                 new Object[]{chatId, count},
-                Chat::parseMessages
+                Chat::parseTopics
         );
     }
 
@@ -74,15 +81,15 @@ public class Chat {
      *        для текущего чата {@param chatId},
      *        посортированных в порядке возрастания времени.
      */
-    public List<Message> getMessagesBetween(String chatId, int afterId, int beforeId) {
+    public List<Topic> getTopicsBetween(String chatId, int afterId, int beforeId) {
         if (afterId > beforeId) {
             throw new IllegalArgumentException("afterId in interval should be smaller than beforeId");
         }
-        return pool.select("SELECT * FROM messages " +
+        return pool.select("SELECT * FROM topics " +
                         "WHERE chat_id = ? AND id > ? AND id < ?" +
                         "ORDER BY time ASC;",
                 new Object[]{chatId, afterId, beforeId},
-                Chat::parseMessages
+                Chat::parseTopics
         );
     }
 
@@ -91,13 +98,13 @@ public class Chat {
      *        для текущего чата {@param chatId},
      *        посортированных в порядке возрастания времени.
      */
-    public List<Message> getMessagesAfter(String chatId, int count, int afterId) {
-        return pool.select("SELECT * FROM messages " +
+    public List<Topic> getTopicsAfter(String chatId, int count, int afterId) {
+        return pool.select("SELECT * FROM topics " +
                         "WHERE chat_id = ? AND id > ?" +
                         "ORDER BY time ASC " +
                         "LIMIT ?;",
                 new Object[]{chatId, afterId, count},
-                Chat::parseMessages
+                Chat::parseTopics
         );
     }
 
@@ -106,61 +113,79 @@ public class Chat {
      *        для текущего чата {@param chatId},
      *        посортированных в порядке возрастания времени.
      */
-    public List<Message> getMessagesBefore(String chatId, int count, int beforeId) {
+    public List<Topic> getTopicsBefore(String chatId, int count, int beforeId) {
         return pool.select("SELECT * FROM " +
-                        "(SELECT * FROM messages " +
+                        "(SELECT * FROM topics " +
                         "WHERE chat_id = ? AND id < ?" +
                         "ORDER BY time DESC " +
                         "LIMIT ?) " +
                         "ORDER BY time ASC;",
                 new Object[]{chatId, beforeId, count},
-                Chat::parseMessages
+                Chat::parseTopics
         );
     }
 
-    public Message getMessageById(int messageId) {
-        return pool.select("SELECT * FROM messages WHERE id = ?",
-                new Object[]{messageId},
-                rs -> rs.next() ? new Message(rs) : null
+    public Topic getTopicById(int id) {
+        return pool.select("SELECT * FROM topics WHERE id = ?",
+                new Object[]{id},
+                rs -> rs.next() ? new Topic(rs) : null
         );
     }
 
-    public synchronized Message saveMessage(Message message) {
+    public synchronized Topic saveTopic(Topic topic) {
         // synchronized тут потому что создание записи и получение новой id
         // созданной записи должны быть одной атомарной операцией
-        pool.update("INSERT INTO messages " +
+        pool.update("INSERT INTO topics " +
                         "(chat_id, player_id, time, text) " +
                         "VALUES (?, ?, ?, ?);",
                 new Object[]{
-                        message.getChatId(),
-                        message.getPlayerId(),
-                        JDBCTimeUtils.toString(new Date(message.getTime())),
-                        message.getText()
+                        topic.getChatId(),
+                        topic.getPlayerId(),
+                        JDBCTimeUtils.toString(new Date(topic.getTime())),
+                        topic.getText()
                 }
         );
-        message.setId(pool.lastInsertId("messages", "id"));
-        return message;
+        topic.setId(pool.lastInsertId("topics", "id"));
+        return topic;
     }
 
-    public void deleteMessage(int id) {
-        pool.update("DELETE FROM messages WHERE id = ?", new Object[]{id});
+    public void deleteTopic(int id) {
+        pool.update("DELETE FROM topics WHERE id = ?", new Object[]{id});
+    }
+
+    private static List<Topic> parseTopics(ResultSet rs) throws SQLException {
+        List<Topic> topics = new ArrayList<>();
+        while (rs.next()) {
+            topics.add(new Topic(rs));
+        }
+        return topics;
+    }
+
+    public List<Message> getMessagesByTopicId(int topicId) {
+        return pool.select("SELECT * FROM messages " +
+                "WHERE topic_id = ? " +
+                "ORDER BY time ASC;",
+                new Object[]{topicId},
+                Chat::parseMessages);
     }
 
     private static List<Message> parseMessages(ResultSet rs) throws SQLException {
-        List<Message> messages = new ArrayList<>();
+        List<Message> result = new ArrayList<>();
         while (rs.next()) {
-            messages.add(new Message(rs));
+            result.add(new Message(rs));
         }
-        return messages;
+        return result;
     }
 
     public void removeAll() {
+        pool.clearLastInsertedId("topics", "id");
+        pool.update("DELETE FROM topics");
         pool.clearLastInsertedId("messages", "id");
         pool.update("DELETE FROM messages");
     }
 
     @Data
-    public static class Message {
+    public static class Topic {
         private Integer id;
         private String chatId;
         private String playerId;
@@ -168,8 +193,33 @@ public class Chat {
         private String text;
 
         @Builder
-        public Message(String chatId, String playerId, long time, String text) {
+        public Topic(String chatId, String playerId, long time, String text) {
             this.chatId = chatId;
+            this.playerId = playerId;
+            this.time = time;
+            this.text = text;
+        }
+
+        private Topic(ResultSet rs) throws SQLException {
+            this.id = rs.getInt("id");
+            this.chatId = rs.getString("chat_id");
+            this.playerId = rs.getString("player_id");
+            this.time = JDBCTimeUtils.getTimeLong(rs);
+            this.text = rs.getString("text");
+        }
+    }
+
+    @Data
+    public static class Message {
+        private Integer id;
+        private Integer topicId;
+        private String playerId;
+        private long time;
+        private String text;
+
+        @Builder
+        public Message(Integer topicId, String playerId, long time, String text) {
+            this.topicId = topicId;
             this.playerId = playerId;
             this.time = time;
             this.text = text;
@@ -177,7 +227,7 @@ public class Chat {
 
         private Message(ResultSet rs) throws SQLException {
             this.id = rs.getInt("id");
-            this.chatId = rs.getString("chat_id");
+            this.topicId = rs.getInt("topic_id");
             this.playerId = rs.getString("player_id");
             this.time = JDBCTimeUtils.getTimeLong(rs);
             this.text = rs.getString("text");

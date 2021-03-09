@@ -25,6 +25,7 @@ package com.codenjoy.dojo.services;
 import com.codenjoy.dojo.services.dao.Chat;
 import com.codenjoy.dojo.web.controller.Validator;
 import com.codenjoy.dojo.web.rest.pojo.PMessage;
+import com.codenjoy.dojo.web.rest.pojo.PTopic;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -35,70 +36,72 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class ChatService {
 
-    private Validator validator;
-    private Chat chat;
-    private TimeService time;
+    private final Validator validator;
+    private final Chat chat;
+    private final TimeService time;
 
-    public List<PMessage> getMessages(String room, int count,
-                                      Integer afterId, Integer beforeId,
-                                      String playerId)
+    public List<PTopic> getTopics(String room, int count,
+                                  Integer afterId, Integer beforeId,
+                                  String playerId)
     {
         validator.checkPlayerInRoom(playerId, room);
-
+        List<Chat.Topic> topics;
         if (afterId != null && beforeId != null) {
-            return wrap(chat.getMessagesBetween(room, afterId, beforeId));
+            topics = chat.getTopicsBetween(room, afterId, beforeId);
+        } else if (afterId != null) {
+            topics = chat.getTopicsAfter(room, count, afterId);
+        } else if (beforeId != null) {
+            topics = chat.getTopicsBefore(room, count, beforeId);
+        } else {
+            topics = chat.getTopics(room, count);
         }
 
-        if (afterId != null) {
-            return wrap(chat.getMessagesAfter(room, count, afterId));
-        }
-
-        if (beforeId != null) {
-            return wrap(chat.getMessagesBefore(room, count, beforeId));
-        }
-
-        return wrap(chat.getMessages(room, count));
-    }
-
-    private List<PMessage> wrap(List<Chat.Message> messages) {
-        return messages.stream()
-                .map(PMessage::from)
+        return topics.stream()
+                .map(PTopic::from)
                 .collect(Collectors.toList());
     }
 
-    public PMessage getMessage(int messageId, String room, String playerId) {
+    public PTopic getMessage(int messageId, String room, String playerId) {
         validator.checkPlayerInRoom(playerId, room);
 
-        Chat.Message message = chat.getMessageById(messageId);
+        Chat.Topic topic = chat.getTopicById(messageId);
 
-        if (message == null || !message.getChatId().equals(room)) {
+        if (topic == null || !topic.getChatId().equals(room)) {
             throw new IllegalArgumentException(
                     "There is no message with id: " + messageId +
                             " in room with id: " + room);
         }
-        return PMessage.from(message);
+        return PTopic.from(topic);
     }
 
-    public PMessage postMessage(String text, String room, String playerId) {
+    public PTopic postMessage(String text, String room, String playerId) {
         validator.checkPlayerInRoom(playerId, room);
 
-        Chat.Message message = Chat.Message.builder()
+        Chat.Topic topic = Chat.Topic.builder()
                 .chatId(room)
                 .playerId(playerId)
                 .time(time.now())
                 .text(text)
                 .build();
 
-        chat.saveMessage(message);
+        chat.saveTopic(topic);
 
-        return PMessage.from(message);
+        return PTopic.from(topic);
     }
 
     public boolean deleteMessage(int messageId, String room, String playerId) {
         validator.checkPlayerInRoom(playerId, room);
 
-        chat.deleteMessage(messageId);
+        chat.deleteTopic(messageId);
 
         return true;
+    }
+
+    public List<PMessage> getMessages(int topicId, String room, String playerId) {
+        validator.checkPlayerInRoom(playerId, room);
+
+        return chat.getMessagesByTopicId(topicId).stream()
+                .map(PMessage::from)
+                .collect(Collectors.toList());
     }
 }

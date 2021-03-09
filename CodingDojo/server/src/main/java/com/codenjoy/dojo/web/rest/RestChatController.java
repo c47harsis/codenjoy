@@ -44,11 +44,11 @@ public class RestChatController {
     public static final String URI = "/rest/chat";
     private static final String DEFAULT_COUNT = "10";
 
-    private Validator validator;
-    private ChatService chat;
+    private final Validator validator;
+    private final ChatService chat;
 
-    @GetMapping("/{room}/messages")
-    public ResponseEntity<?> getMessages(
+    @GetMapping("/{room}/topics")
+    public ResponseEntity<?> getTopics(
             @PathVariable(name = "room") String room,
             @RequestParam(name = "count", required = false, defaultValue = DEFAULT_COUNT) int count,
             @RequestParam(name = "afterId", required = false) Integer afterId,
@@ -57,11 +57,11 @@ public class RestChatController {
     {
         validator.checkUser(user);
 
-        return ResponseEntity.ok(chat.getMessages(room, count, afterId, beforeId, user.getId()));
+        return ResponseEntity.ok(chat.getTopics(room, count, afterId, beforeId, user.getId()));
     }
 
-    @PostMapping("/{room}/messages")
-    public ResponseEntity<?> postMessage(
+    @PostMapping("/{room}/topics")
+    public ResponseEntity<?> postTopic(
             @PathVariable(name = "room") String room,
             @NotNull @RequestBody PMessageShort message,
             @AuthenticationPrincipal Registration.User user)
@@ -71,8 +71,8 @@ public class RestChatController {
         return ResponseEntity.ok(chat.postMessage(message.getText(), room, user.getId()));
     }
 
-    @GetMapping("/{room}/messages/{id}")
-    public ResponseEntity<?> getMessage(
+    @GetMapping("/{room}/topics/{id}")
+    public ResponseEntity<?> getTopic(
             @PathVariable(name = "room") String room,
             @PathVariable(name = "id") int id,
             @AuthenticationPrincipal Registration.User user)
@@ -82,8 +82,8 @@ public class RestChatController {
         return ResponseEntity.ok(chat.getMessage(id, room, user.getId()));
     }
 
-    @DeleteMapping("/{room}/messages/{id}")
-    public ResponseEntity<?> deleteMessage(
+    @DeleteMapping("/{room}/topics/{id}")
+    public ResponseEntity<?> deleteTopic(
             @PathVariable(name = "room") String room,
             @PathVariable(name = "id") int id,
             @AuthenticationPrincipal Registration.User user)
@@ -93,4 +93,14 @@ public class RestChatController {
         return ResponseEntity.ok(chat.deleteMessage(id, room, user.getId()));
     }
 
+    @GetMapping("/{room}/topics/{id}/messages")
+    public ResponseEntity<?> getMessages(
+            @PathVariable String room,
+            @PathVariable int id,
+            @AuthenticationPrincipal Registration.User user)
+    {
+        validator.checkUser(user);
+
+        return ResponseEntity.ok(chat.getMessages(id, room, user.getId()));
+    }
 }
