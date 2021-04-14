@@ -31,13 +31,19 @@ import com.codenjoy.dojo.a2048.model.generator.RandomGenerator;
 import com.codenjoy.dojo.services.Dice;
 import com.codenjoy.dojo.services.settings.*;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.jetty.server.RequestLog;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static com.codenjoy.dojo.a2048.services.GameSettings.BreaksMode.*;
 import static com.codenjoy.dojo.a2048.services.GameSettings.Keys.*;
+import static java.util.stream.Collectors.toList;
 
 public final class GameSettings extends SettingsImpl implements SettingsReader<GameSettings> {
 
@@ -95,6 +101,15 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
         }
     }
 
+    @Override
+    public List<Key> allKeys() {
+        return Stream.of(Arrays.stream(Keys.values()),
+                Arrays.stream(NumbersMode.values()),
+                Arrays.stream(BreaksMode.values()))
+                .flatMap(stream -> stream)
+                .collect(toList());
+    }
+
     public GameSettings() {
         multiline(LEVEL_MAP, null).onChange(updateSize());
 
@@ -125,61 +140,62 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
     }
 
     private String buildMap(int size) {
-        String noBreaks = StringUtils.leftPad("", size*size, ' ');
+        String line = StringUtils.leftPad("", size, ' ') + '\n';
+        String noBreaks = line.repeat(size);
         if (breaks() == BREAKS_NOT_EXISTS) {
             return noBreaks;
         }
 
         switch (size) {
             case 3 : return
-                    "   " +
-                    " x " +
-                    "   ";
+                    "   \n" +
+                    " x \n" +
+                    "   \n";
             case 4 : return
-                    "    " +
-                    " x  " +
-                    "  x " +
-                    "    ";
+                    "    \n" +
+                    " x  \n" +
+                    "  x \n" +
+                    "    \n";
             case 5 : return
-                    "  x  " +
-                    "     " +
-                    "x   x" +
-                    "     " +
-                    "  x  ";
+                    "  x  \n" +
+                    "     \n" +
+                    "x   x\n" +
+                    "     \n" +
+                    "  x  \n";
             case 6 : return
-                    "  xx  " +
-                    "      " +
-                    "x    x" +
-                    "x    x" +
-                    "      " +
-                    "  xx  ";
+                    "  xx  \n" +
+                    "      \n" +
+                    "x    x\n" +
+                    "x    x\n" +
+                    "      \n" +
+                    "  xx  \n";
             case 7 : return
-                    "  xxx  " +
-                    "   x   " +
-                    "x     x" +
-                    "xx   xx" +
-                    "x     x" +
-                    "   x   " +
-                    "  xxx  ";
+                    "  xxx  \n" +
+                    "   x   \n" +
+                    "x     x\n" +
+                    "xx   xx\n" +
+                    "x     x\n" +
+                    "   x   \n" +
+                    "  xxx  \n";
             case 8 : return
-                    "   xx   " +
-                    "   xx   " +
-                    "        " +
-                    "xx    xx" +
-                    "xx    xx" +
-                    "        " +
-                    "   xx   " +
-                    "   xx   ";
+                    "   xx   \n" +
+                    "   xx   \n" +
+                    "        \n" +
+                    "xx    xx\n" +
+                    "xx    xx\n" +
+                    "        \n" +
+                    "   xx   \n" +
+                    "   xx   \n";
             case 9 : return
-                    "   xxx   " +
-                    "   x x   " +
-                    "         " +
-                    "xx     xx" +
-                    "x       x" +
-                    "xx     xx" +
-                    "         " +
-                    "   x x   " +
-                    "   xxx   ";
+                    "   xxx   \n" +
+                    "   x x   \n" +
+                    "         \n" +
+                    "xx     xx\n" +
+                    "x       x\n" +
+                    "xx     xx\n" +
+                    "         \n" +
+                    "   x x   \n" +
+                    "   xxx   \n";
             default: return noBreaks;
         }
     }

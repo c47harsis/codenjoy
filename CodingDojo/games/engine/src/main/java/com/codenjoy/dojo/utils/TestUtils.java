@@ -25,6 +25,7 @@ package com.codenjoy.dojo.utils;
 
 import com.codenjoy.dojo.client.AbstractBoard;
 import com.codenjoy.dojo.client.local.LocalGameRunner;
+import com.codenjoy.dojo.services.EventListener;
 import com.codenjoy.dojo.services.*;
 import com.codenjoy.dojo.services.algs.DeikstraFindWay;
 import com.codenjoy.dojo.services.multiplayer.GameField;
@@ -36,9 +37,11 @@ import com.codenjoy.dojo.services.printer.PrinterFactory;
 import com.codenjoy.dojo.services.settings.Settings;
 import lombok.experimental.UtilityClass;
 
-import java.util.List;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+
+import static com.codenjoy.dojo.services.PointImpl.pt;
 
 @UtilityClass
 public class TestUtils {
@@ -72,6 +75,109 @@ public class TestUtils {
         game.on(gameField);
         game.newGame();
         return game;
+    }
+
+    public static String getWay(String inputBoard,
+                                Function<Character, CharElements> elements,
+                                Function<AbstractBoard, DeikstraFindWay.Possible> possible)
+    {
+        AbstractBoard board = getBoard(elements);
+        board = (AbstractBoard) board.forString(inputBoard);
+
+        Map<Point, List<Direction>> ways = new DeikstraFindWay().getPossibleWays(board.size(), possible.apply(board)).toMap();
+
+        Map<Point, List<Direction>> map = new TreeMap<>();
+        for (Map.Entry<Point, List<Direction>> entry : ways.entrySet()) {
+            List<Direction> value = entry.getValue();
+            if (!value.isEmpty()) {
+                map.put(entry.getKey(), value);
+            }
+        }
+
+        return map.toString().replace("], [", "],\n[");
+    }
+
+    public static AbstractBoard getBoard(Function<Character, CharElements> elements) {
+        return new AbstractBoard() {
+                @Override
+                public CharElements valueOf(char ch) {
+                    return elements.apply(ch);
+                }
+
+                @Override
+                protected int inversionY(int y) {
+                    return size - 1 - y;
+                }
+            };
+    }
+
+    public static String drawPossibleWays(int delta,
+                                          Map<Point, List<Direction>> possibleWays,
+                                          int size,
+                                          Function<Point, Character> getAt)
+    {
+        char[][] chars = new char[size * delta][size * delta];
+        for (int x = 0; x < chars.length; x++) {
+            Arrays.fill(chars[x], ' ');
+        }
+
+        for (int x = 0; x < size; x++) {
+            for (int y = 0; y < size; y++) {
+                int cx = x * delta + 1;
+                int cy = y * delta + 1;
+
+                char ch = getAt.apply(pt(x, y));
+                chars[cx][cy] = (ch == ' ') ? '.' : ch;
+                try {
+                    for (Direction direction : possibleWays.get(pt(x, y))) {
+                        chars[direction.changeX(cx)][direction.changeY(cy)] = directionChar(direction);
+                    }
+                } catch (NullPointerException e) {
+                    // do nothing
+                }
+            }
+        }
+
+        return toString(chars);
+    }
+
+    private static char directionChar(Direction direction) {
+        switch (direction) {
+            case UP: return '↑';
+            case LEFT: return '←';
+            case RIGHT: return '→';
+            case DOWN: return '↓';
+            default: throw new IllegalArgumentException();
+        }
+    }
+
+    public static String drawShortestWay(Point from,
+                                        List<Direction> shortestWay,
+                                        int size,
+                                        Function<Point, Character> getAt)
+    {
+        Map<Point, List<Direction>> map = new HashMap<>();
+
+        Point current = from;
+        while (!shortestWay.isEmpty()) {
+            Direction direction = shortestWay.remove(0);
+            map.put(current, Arrays.asList(direction));
+            current = direction.change(current);
+        }
+
+        return drawPossibleWays(2, map, size, getAt);
+    }
+
+    private static String toString(char[][] chars) {
+        StringBuffer buffer = new StringBuffer();
+        for (int x = 0; x < chars.length; x++) {
+            for (int y = 0; y < chars.length; y++) {
+                buffer.append(chars[y][chars.length - 1 - x]);
+            }
+            buffer.append('\n');
+        }
+
+        return buffer.toString();
     }
 
     public static String printWay(String expected,

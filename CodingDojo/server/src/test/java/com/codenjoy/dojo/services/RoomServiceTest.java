@@ -25,12 +25,18 @@ package com.codenjoy.dojo.services;
 import com.codenjoy.dojo.services.mocks.FirstGameType;
 import com.codenjoy.dojo.services.mocks.SecondGameType;
 import com.codenjoy.dojo.services.room.RoomService;
+import com.codenjoy.dojo.services.room.RoomState;
 import com.codenjoy.dojo.services.settings.Settings;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collection;
+import java.util.stream.IntStream;
+
 import static com.codenjoy.dojo.services.mocks.FirstGameSettings.Keys.PARAMETER1;
-import static org.junit.Assert.*;
+import static java.util.stream.Collectors.toList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.mockito.Mockito.mock;
 
 public class RoomServiceTest {
@@ -49,8 +55,23 @@ public class RoomServiceTest {
 
     @Test
     public void shouldRoomIsNotActive_ifNotPresent() {
+        // given
+        assertEquals(false, service.exists("non-exists-room"));
+
         // when then
+        // комната которой не существует неактивна
         assertEquals(false, service.isActive("non-exists-room"));
+    }
+
+    @Test
+    public void shouldRoomRegistrationIsClosed_ifNotPresent() {
+        // given
+        assertEquals(false, service.exists("non-exists-room"));
+
+        // when then
+        // комната которой не существует должна быть открыта для регистрации
+        // иначе не создастся первый пользователь и не создаст эту комнату
+        assertEquals(true, service.isOpened("non-exists-room"));
     }
 
     @Test
@@ -60,6 +81,15 @@ public class RoomServiceTest {
 
         // when then
         assertEquals(true, service.isActive("room"));
+    }
+
+    @Test
+    public void shouldRoomRegistrationIsOpenedByDefault_ifPresent() {
+        // given
+        service.create("room", game1);
+
+        // when then
+        assertEquals(true, service.isOpened("room"));
     }
 
     @Test
@@ -86,6 +116,7 @@ public class RoomServiceTest {
 
         // then
         assertEquals(true, service.isActive("room"));
+        assertEquals(true, service.isOpened("room"));
 
         assertEquals("RoomGameType{type=GameType[first], " +
                         "settings=First[Parameter 1=15, Parameter 2=true]}",
@@ -96,12 +127,29 @@ public class RoomServiceTest {
     }
 
     @Test
-    public void shouldException_whenSetActiveOfNonExistsRoom() {
+    public void shouldNoEffect_whenSetActiveOfNonExistsRoom() {
         // when
         service.setActive("room", true);
 
         // then
         assertEquals(false, service.isActive("room"));
+    }
+
+    @Test
+    public void shouldNoEffect_whenSetRegistrationOpenedOfNonExistsRoom() {
+        // given
+        // ее нет но она открыта
+        assertEquals(true, service.isOpened("room"));
+        assertEquals(false, service.exists("room"));
+
+        // when
+        // пробуем закрыть
+        service.setOpened("room", false);
+
+        // then
+        // а нечего закрывать так как нет комнаты )
+        assertEquals(true, service.isOpened("room"));
+        assertEquals(false, service.exists("room"));
     }
 
     @Test
@@ -123,6 +171,24 @@ public class RoomServiceTest {
     }
 
     @Test
+    public void shouldChangeRoomRegistrationStatus() {
+        // given
+        service.create("room", mock(GameType.class));
+
+        // when
+        service.setOpened("room", false);
+
+        // then
+        assertEquals(false, service.isOpened("room"));
+
+        // when
+        service.setOpened("room", true);
+
+        // then
+        assertEquals(true, service.isOpened("room"));
+    }
+
+    @Test
     public void shouldGetState_ifCreated() {
         // given
         service.create("room", game1);
@@ -131,14 +197,16 @@ public class RoomServiceTest {
         assertEquals("RoomState(name=room, " +
                         "type=RoomGameType{type=GameType[first], " +
                         "settings=First[Parameter 1=15, Parameter 2=true]}, " +
-                        "active=true)",
-                service.state("room").toString());
+                        "active=true, " +
+                        "opened=true, " +
+                        "tick=0)",
+                service.state("room").get().toString());
     }
 
     @Test
     public void shouldGetState_ifNotCreated() {
         // when then
-        assertEquals(null, service.state("room"));
+        assertEquals(false, service.state("room").isPresent());
     }
 
     @Test
@@ -155,6 +223,22 @@ public class RoomServiceTest {
     public void shouldGetSettings_ifNotCreated() {
         // when then
         assertEquals(null, service.settings("room"));
+    }
+
+    @Test
+    public void shouldGetGameType_ifCreated() {
+        // given
+        service.create("room", game1);
+
+        // when then
+        assertEquals("RoomGameType{type=GameType[first], settings=First[Parameter 1=15, Parameter 2=true]}",
+                service.gameType("room").toString());
+    }
+
+    @Test
+    public void shouldGetGameType_ifNotCreated() {
+        // when then
+        assertEquals(null, service.gameType("room"));
     }
 
     @Test
@@ -254,6 +338,39 @@ public class RoomServiceTest {
     }
 
     @Test
+    public void shouldRemoveAll() {
+        // given
+        service.create("room4", game2);
+        service.create("room2", game1);
+        service.create("room1", game1);
+        service.create("room3", game2);
+
+        // when
+        service.removeAll();
+
+        // then
+        assertEquals("[]", service.names().toString());
+    }
+
+    @Test
+    public void shouldGetAllStates() {
+        // given
+        service.create("room4", game2);
+        service.create("room2", game1);
+        service.create("room1", game1);
+        service.create("room3", game2);
+
+        // when
+        Collection<RoomState> all = service.all();
+
+        // then
+        assertEquals("[RoomState(name=room1, type=RoomGameType{type=GameType[first], settings=First[Parameter 1=15, Parameter 2=true]}, active=true, opened=true, tick=0), " +
+                "RoomState(name=room2, type=RoomGameType{type=GameType[first], settings=First[Parameter 1=15, Parameter 2=true]}, active=true, opened=true, tick=0), " +
+                "RoomState(name=room3, type=RoomGameType{type=GameType[second], settings=Second[Parameter 3=43, Parameter 4=true]}, active=true, opened=true, tick=0), " +
+                "RoomState(name=room4, type=RoomGameType{type=GameType[second], settings=Second[Parameter 3=43, Parameter 4=true]}, active=true, opened=true, tick=0)]", all.toString());
+    }
+
+    @Test
     public void shouldExists() {
         // given
         service.create("room1", game1);
@@ -296,5 +413,62 @@ public class RoomServiceTest {
         assertEquals("[GameRooms(game=first, rooms=[room1, room2]), " +
                 "GameRooms(game=second, rooms=[room3, room4])]",
                 service.gameRooms().toString());
+    }
+
+    @Test
+    public void shouldTickAllGames_isolatedForRooms() {
+        // given
+        service.create("room4", game2);
+        service.create("room2", game1);
+        service.create("room1", game1);
+        service.create("room3", game2);
+
+        assertTicks("[0, 0, 0, 0]");
+
+        // when
+        IntStream.range(0, 5).forEach(i -> {
+            service.tick("room1");
+            service.tick("room2");
+            service.tick("room4");
+        });
+        service.tick("room2");
+        service.tick("room2");
+
+        // then
+        assertTicks("[5, 7, 0, 5]");
+    }
+
+    @Test
+    public void shouldResetAllTicks() {
+        // given
+        shouldTickAllGames_isolatedForRooms();
+
+        assertTicks("[5, 7, 0, 5]");
+
+        // when
+        service.resetTick("room2");
+
+        // then
+        assertTicks("[5, 0, 0, 5]");
+    }
+
+    @Test
+    public void shouldGetTick() {
+        // given
+        shouldTickAllGames_isolatedForRooms();
+
+        assertTicks("[5, 7, 0, 5]");
+
+        // when then
+        assertEquals(5, service.getTick("room1"));
+        assertEquals(7, service.getTick("room2"));
+        assertEquals(0, service.getTick("room3"));
+        assertEquals(5, service.getTick("room4"));
+    }
+
+    public void assertTicks(String expected) {
+        assertEquals(expected, service.all().stream()
+                .map(state -> state.getTick())
+                .collect(toList()).toString());
     }
 }

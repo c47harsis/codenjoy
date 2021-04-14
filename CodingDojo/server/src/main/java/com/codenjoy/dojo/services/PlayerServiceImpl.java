@@ -33,11 +33,14 @@ import com.codenjoy.dojo.services.dao.ActionLogger;
 import com.codenjoy.dojo.services.dao.Chat;
 import com.codenjoy.dojo.services.dao.Registration;
 import com.codenjoy.dojo.services.hash.Hash;
+import com.codenjoy.dojo.services.hero.HeroData;
 import com.codenjoy.dojo.services.nullobj.NullGameType;
 import com.codenjoy.dojo.services.nullobj.NullPlayer;
 import com.codenjoy.dojo.services.nullobj.NullPlayerGame;
 import com.codenjoy.dojo.services.playerdata.PlayerData;
+import com.codenjoy.dojo.services.room.RoomService;
 import com.codenjoy.dojo.services.settings.Settings;
+import com.codenjoy.dojo.services.semifinal.SemifinalService;
 import com.codenjoy.dojo.transport.screen.ScreenData;
 import com.codenjoy.dojo.transport.screen.ScreenRecipient;
 import lombok.extern.slf4j.Slf4j;
@@ -82,7 +85,8 @@ public class PlayerServiceImpl implements PlayerService {
     @Autowired protected ActionLogger actionLogger;
     @Autowired protected Registration registration;
     @Autowired protected ConfigProperties config;
-    @Autowired protected Semifinal semifinal;
+    @Autowired protected RoomService roomService;
+    @Autowired protected SemifinalService semifinal;
     @Autowired protected SimpleProfiler profiler;
 
     @Value("${game.ai}")
@@ -110,7 +114,7 @@ public class PlayerServiceImpl implements PlayerService {
         try {
             log.debug("Registered user {} in game {}", id, game);
 
-            if (!config.isRegistrationOpened()) {
+            if (!isRegistrationOpened(room)) {
                 return NullPlayer.INSTANCE;
             }
 
@@ -297,7 +301,7 @@ public class PlayerServiceImpl implements PlayerService {
     public void tick() {
         lock.writeLock().lock();
         try {
-            profiler.start("PlayerService.tick()");
+            profiler.start("PSI.tick()");
 
             actionLogger.log(playerGames);
             autoSaver.tick();
@@ -363,13 +367,22 @@ public class PlayerServiceImpl implements PlayerService {
                 cacheBoards.put(player, decoder.encodeForClient(board));
                 Object encoded = decoder.encodeForBrowser(board);
 
-                map.put(player, new PlayerData(gameData.getBoardSize(),
+                int boardSize = gameData.getBoardSize();
+                Object score = player.getScore();
+                String message = player.getMessage();
+                Map<String, Object> scores = gameData.getScores();
+                List<String> group = gameData.getGroup();
+                Map<String, HeroData> coordinates = gameData.getCoordinates();
+                Map<String, String> readableNames = gameData.getReadableNames();
+                map.put(player, new PlayerData(boardSize,
                         encoded,
                         gameType,
-                        player.getScore(),
-                        player.getMessage(),
-                        gameData.getScores(),
-                        gameData.getHeroesData(),
+                        score,
+                        message,
+                        scores,
+                        coordinates,
+                        readableNames,
+                        group,
                         lastChatMessage));
 
             } catch (Exception e) {
@@ -574,7 +587,10 @@ public class PlayerServiceImpl implements PlayerService {
         lock.writeLock().lock();
         try {
             playerGames.getAll(withRoom(room))
-                    .forEach(playerGames.all()::remove);
+                    .stream()
+                    .map(pg -> pg.getPlayer())
+            // TODO тут раньше сносились все комнаты напрямую, но spreader не трогали, и тесты не тестируют это
+                    .forEach(playerGames::remove);
         } finally {
             lock.writeLock().unlock();
         }
@@ -601,6 +617,12 @@ public class PlayerServiceImpl implements PlayerService {
     }
 
     @Override
+    public boolean isRegistrationOpened(String room) {
+        return isRegistrationOpened()
+                && roomService.isOpened(room);
+    }
+
+    @Override
     public void openRegistration() {
         config.setRegistrationOpened(true);
     }
@@ -621,7 +643,7 @@ public class PlayerServiceImpl implements PlayerService {
     public void cleanAllScores(String room) {
         lock.writeLock().lock();
         try {
-            semifinal.clean(); // TODO semifinal должен научиться работать для определенных комнат
+            semifinal.clean(room);
 
             playerGames.getAll(withRoom(room))
                 .forEach(PlayerGame::clearScore);

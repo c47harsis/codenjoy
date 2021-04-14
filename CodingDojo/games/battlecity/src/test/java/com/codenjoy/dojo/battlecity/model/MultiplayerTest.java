@@ -23,6 +23,10 @@ package com.codenjoy.dojo.battlecity.model;
  */
 
 
+import com.codenjoy.dojo.battlecity.TestGameSettings;
+import com.codenjoy.dojo.battlecity.model.items.Ice;
+import com.codenjoy.dojo.battlecity.model.items.River;
+import com.codenjoy.dojo.battlecity.model.items.Tree;
 import com.codenjoy.dojo.battlecity.model.levels.DefaultBorders;
 import com.codenjoy.dojo.battlecity.services.GameSettings;
 import com.codenjoy.dojo.services.Dice;
@@ -34,8 +38,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.stubbing.OngoingStubbing;
 
+import static com.codenjoy.dojo.services.PointImpl.pt;
 import static com.codenjoy.dojo.battlecity.services.GameSettings.Keys.*;
 import static com.codenjoy.dojo.battlecity.services.GameSettings.Keys.AI_PRIZE_LIMIT;
+import static com.codenjoy.dojo.services.round.RoundSettings.Keys.ROUNDS_ENABLED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -46,50 +52,38 @@ public class MultiplayerTest {
 
     private int size = 5;
     private Battlecity game;
-    private Dice dice1;
-    private Dice dice2;
     private Game tanks1;
     private Game tanks2;
     private Player player1;
     private Player player2;
     private PrinterFactory printerFactory;
     private GameSettings settings;
+    private Dice dice;
+
+    @Before
+    public void setUp() {
+        dice = mock(Dice.class);
+        settings = new TestGameSettings();
+        printerFactory = new PrinterFactoryImpl();
+    }
 
     public void givenGame() {
-
-        game = new Battlecity(size, mock(Dice.class), settings);
-
+        game = new Battlecity(size, dice, settings);
 
         game.addBorder(new DefaultBorders(size).get());
 
-        player1 = new Player(null, dice1, settings);
-        player2 = new Player(null, dice2, settings);
+        player1 = new Player(null, settings);
+        player2 = new Player(null, settings);
         tanks1 = new Single(player1, printerFactory);
         tanks1.on(game);
         tanks2 = new Single(player2, printerFactory);
         tanks2.on(game);
     }
 
-    @Before
-    public void setUp() {
-        settings = new GameSettings()
-                .integer(SPAWN_AI_PRIZE, 4)
-                .integer(KILL_HITS_AI_PRIZE, 3)
-                .integer(PRIZE_ON_FIELD, 3)
-                .integer(PRIZE_WORKING, 3)
-                .integer(AI_TICKS_PER_SHOOT, 3)
-                .integer(TANK_TICKS_PER_SHOOT, 4)
-                .integer(SLIPPERINESS, 3)
-                .integer(PENALTY_WALKING_ON_WATER, 3)
-                .integer(AI_PRIZE_LIMIT, 3);
-
-        printerFactory = new PrinterFactoryImpl();
-    }
-
     @Test
-    public void shouldRandomPositionWhenNewGame() {
-        dice1 = dice(1, 1);
-        dice2 = dice(1, 1, 2, 2);
+    public void shouldRandomPosition_whenNewGame() {
+        dice(1, 1,
+                2, 2);
 
         givenGame();
 
@@ -113,9 +107,10 @@ public class MultiplayerTest {
     }
 
     @Test
-    public void shouldRandomPositionWhenKillTank() {
-        dice1 = dice(1, 1);
-        dice2 = dice(1, 2, 2, 2);
+    public void shouldRandomPosition_whenKillTank() {
+        dice(1, 1,
+                1, 2,
+                2, 2);
 
         givenGame();
 
@@ -154,9 +149,11 @@ public class MultiplayerTest {
     }
 
     @Test
-    public void shouldRandomPositionButAtFreeSpaceWhenKillTank() {
-        dice1 = dice(1, 1);
-        dice2 = dice(1, 2, 0, 0, 2, 2);
+    public void shouldRandomPosition_atFreeSpace_whenKillTank() {
+        dice(1, 1,
+                1, 2,
+                0, 0, // skipped, not free, because hero
+                2, 2);
 
         givenGame();
 
@@ -194,13 +191,59 @@ public class MultiplayerTest {
 
     }
 
-    private Dice dice(int... values) {
-        Dice dice = mock(Dice.class);
+    @Test
+    public void shouldRandomPosition_atFreeSpace_whenTrySpawnUnderTreeRiverOrIce() {
+        dice(1, 1,
+                1, 2,
+                3, 3, // skipped, not free, because tree
+                3, 2, // skipped, not free, because river
+                3, 1, // skipped, not free, because ice
+                2, 2);
+
+        givenGame();
+        game.addTree(new Tree(pt(3, 3)));
+        game.addRiver(new River(pt(3, 2)));
+        game.addIce(new Ice(pt(3, 1)));
+
+        tanks1.newGame();
+        tanks2.newGame();
+
+        assertD("☼☼☼☼☼\n" +
+                "☼  %☼\n" +
+                "☼˄ ~☼\n" +
+                "☼▲ #☼\n" +
+                "☼☼☼☼☼\n", player1
+        );
+
+        tanks1.getPlayer().getHero().act();
+        game.tick();
+
+        assertD("☼☼☼☼☼\n" +
+                "☼  %☼\n" +
+                "☼Ѡ ~☼\n" +
+                "☼▲ #☼\n" +
+                "☼☼☼☼☼\n", player1
+        );
+
+        assertTrue(tanks2.isGameOver());
+        tanks2.newGame();
+
+        game.tick();
+
+        assertD("☼☼☼☼☼\n" +
+                "☼  %☼\n" +
+                "☼ ˄~☼\n" +
+                "☼▲ #☼\n" +
+                "☼☼☼☼☼\n", player1
+        );
+
+    }
+
+    private void dice(int... values) {
         OngoingStubbing<Integer> when = when(dice.next(anyInt()));
         for (int value : values) {
             when = when.thenReturn(value);
         }
-        return dice;
     }
 
     private void assertD(String field, Player player) {

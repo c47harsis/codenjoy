@@ -28,9 +28,9 @@ import com.codenjoy.dojo.services.Point;
 /**
  * Этот абстракция над доской для Printer
  */
-public interface BoardReader {
+public interface BoardReader<P> {
 
     int size();
 
-    Iterable<? extends Point> elements();
+    Iterable<? extends Point> elements(P player);
 }

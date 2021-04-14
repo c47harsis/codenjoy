@@ -42,38 +42,16 @@ public class Hero extends RoundPlayerHero<Field> implements State<Elements, Play
     public static final int MAX = 1000;
 
     private Level level;
-    private Dice dice;
     private boolean bomb;
     private Direction direction;
     private int score;
 
     private HeroPerks perks = new HeroPerks();
 
-    public Hero(Level level, Dice dice) {
+    public Hero(Level level) {
         this.level = level;
-        this.dice = dice;
         score = 0;
         direction = null;
-    }
-
-    public void init(Field field) {
-        super.init(field);
-
-        int iteration = 0;
-        while (iteration++ < MAX) {
-            Point pt = PointImpl.random(dice, field.size());
-
-            if (field.isBarrier(pt, !FOR_HERO)) {
-                continue;
-            }
-
-            move(pt);
-            break;
-        }
-
-        if (iteration >= MAX) {
-            System.out.println("Dead loop at Hero.init(Board)!");
-        }
     }
 
     @Override
@@ -242,10 +220,6 @@ public class Hero extends RoundPlayerHero<Field> implements State<Elements, Play
         return OTHER_BOMBERMAN;
     }
 
-    public Dice getDice() {
-        return dice;
-    }
-
     @Override
     public void tick() {
         perks.tick();
@@ -267,8 +241,8 @@ public class Hero extends RoundPlayerHero<Field> implements State<Elements, Play
         return score;
     }
 
-    public void addScore(int score) {
-        this.score += score;
+    public void addScore(int added) {
+        score = Math.max(0, score + added);
     }
 }
 

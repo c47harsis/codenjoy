@@ -50,8 +50,7 @@ import static com.codenjoy.dojo.services.PointImpl.pt;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 public abstract class AbstractGameTest {
 
@@ -71,13 +70,9 @@ public abstract class AbstractGameTest {
 
     @Before
     public void setup() {
-        Levels.init();
-        Zombie.init();
-        ZombiePot.init();
-
         mode = ICanCode.TRAINING;
 
-        settings = new GameSettings()
+        settings = spy(new GameSettings())
                 .integer(PERK_ACTIVITY, 10)
                 .integer(PERK_AVAILABILITY, 10)
                 .integer(PERK_DROP_RATIO, 100)
@@ -109,7 +104,7 @@ public abstract class AbstractGameTest {
     }
 
     protected void givenFl(int viewSize, String board) {
-        Levels.VIEW_SIZE = viewSize;
+        settings.integer(VIEW_SIZE, viewSize);
         Level level = createLevels(new String[]{board}).get(0);
         game = new ICanCode(level, dice, mode, settings);
         listener = mock(EventListener.class);
@@ -158,8 +153,9 @@ public abstract class AbstractGameTest {
     }
 
     protected OngoingStubbing<Direction> givenZombie() {
-        Zombie.BRAIN = mock(ZombieBrain.class);
-        return when(Zombie.BRAIN.whereToGo(any(Point.class), any(Field.class)));
+        ZombieBrain brain = mock(ZombieBrain.class);
+        when(settings.zombieBrain()).thenReturn(brain);
+        return when(brain.whereToGo(any(Point.class), any(Field.class)));
     }
 
     protected void assertL(String expected) {
@@ -190,7 +186,7 @@ public abstract class AbstractGameTest {
     protected void zombieAt(int x, int y) {
         givenZombie().thenReturn(STOP);
         Zombie zombie = new Zombie(true);
-        zombie.setField(mock(Field.class));
+        zombie.setField(game);
         game.move(zombie, pt(x, y));
     }
 }

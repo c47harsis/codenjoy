@@ -39,6 +39,10 @@ import com.codenjoy.dojo.services.multiplayer.MultiplayerType;
 import com.codenjoy.dojo.services.printer.CharElements;
 import com.codenjoy.dojo.services.settings.Parameter;
 
+import static com.codenjoy.dojo.bomberman.services.GameSettings.Keys.BOARD_SIZE;
+import static com.codenjoy.dojo.services.round.RoundSettings.Keys.ROUNDS_PLAYERS_PER_ROOM;
+import static com.codenjoy.dojo.services.round.RoundSettings.Keys.ROUNDS_ENABLED;
+
 public class GameRunner extends AbstractGameType<GameSettings> {
 
     public static final String GAME_NAME = "bomberman";
@@ -60,7 +64,7 @@ public class GameRunner extends AbstractGameType<GameSettings> {
 
     @Override
     public Parameter<Integer> getBoardSize(GameSettings settings) {
-        return settings.getBoardSize();
+        return settings.integerValue(BOARD_SIZE);
     }
 
     @Override
@@ -85,18 +89,17 @@ public class GameRunner extends AbstractGameType<GameSettings> {
 
     @Override
     public MultiplayerType getMultiplayerType(GameSettings settings) {
-        if (settings.isMultiple().getValue()) {
-            return MultiplayerType.MULTIPLE;
-        } else {
+        if (settings.bool(ROUNDS_ENABLED)) {
             return MultiplayerType.TEAM.apply(
-                    settings.getPlayersPerRoom().getValue(),
-                    MultiplayerType.DISPOSABLE
-            );
+                    settings.integer(ROUNDS_PLAYERS_PER_ROOM),
+                    MultiplayerType.DISPOSABLE);
+        } else {
+            return MultiplayerType.MULTIPLE;
         }
     }
 
     @Override
     public GamePlayer createPlayer(EventListener listener, String playerId, GameSettings settings) {
-        return new Player(listener, getDice(), settings);
+        return new Player(listener, settings);
     }
 }

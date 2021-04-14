@@ -26,19 +26,23 @@ package com.codenjoy.dojo.battlecity.model;
 import com.codenjoy.dojo.battlecity.model.items.*;
 import com.codenjoy.dojo.battlecity.services.Events;
 import com.codenjoy.dojo.battlecity.services.GameSettings;
+import com.codenjoy.dojo.services.BoardUtils;
 import com.codenjoy.dojo.services.Dice;
 import com.codenjoy.dojo.services.Point;
 import com.codenjoy.dojo.services.printer.BoardReader;
+import com.codenjoy.dojo.services.round.RoundField;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 import static com.codenjoy.dojo.battlecity.model.Elements.*;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toList;
 
-public class Battlecity implements Field {
+public class Battlecity extends RoundField<Player> implements Field {
 
+    private Dice dice;
     private int size;
 
     private PrizeGenerator prizeGen;
@@ -57,7 +61,9 @@ public class Battlecity implements Field {
     private GameSettings settings;
 
     public Battlecity(int size, Dice dice, GameSettings settings) {
+        super(Events.START_ROUND, Events.WIN_ROUND, Events.KILL_YOUR_TANK, settings);
         this.size = size;
+        this.dice = dice;
         this.settings = settings;
         ais = new LinkedList<>();
         prizes = new Prizes();
@@ -71,6 +77,22 @@ public class Battlecity implements Field {
         aiGen = new AiGenerator(this, dice, settings);
     }
 
+    @Override
+    protected List<Player> players() {
+        return players;
+    }
+
+    @Override
+    protected void setNewObjects() {
+        // do nothing
+    }
+
+    @Override
+    public void cleanStuff() {
+        removeDeadItems();
+    }
+
+
     public void addAiTanks(List<? extends Point> tanks) {
         aiGen.dropAll(tanks);
     }
@@ -83,9 +105,7 @@ public class Battlecity implements Field {
     }
 
     @Override
-    public void tick() {
-        removeDeadItems();
-
+    public void tickField() {
         aiGen.allHave(withPrize());
         aiGen.dropAll();
 
@@ -216,6 +236,11 @@ public class Battlecity implements Field {
     }
 
     @Override
+    public boolean isTree(Point pt) {
+        return trees.stream().anyMatch(tree -> tree.itsMe(pt));
+    }
+
+    @Override
     public boolean isIce(Point pt) {
         return ice.stream().anyMatch(ice -> ice.itsMe(pt));
     }
@@ -258,7 +283,7 @@ public class Battlecity implements Field {
         }
 
         if (died != null) {
-            died.event(Events.KILL_YOUR_TANK);
+            died.getHero().die();
         }
     }
 
@@ -273,6 +298,16 @@ public class Battlecity implements Field {
     public boolean isBarrierFor(Tank tank, Point pt) {
         return isBarrier(pt)
                 || (isRiver(pt) && !tank.canWalkOnWater());
+    }
+
+    @Override
+    public boolean isFree(Point pt) {
+        return !(isBarrier(pt) || isTree(pt) || isRiver(pt) || isIce(pt));
+    }
+
+    @Override
+    public Optional<Point> freeRandom() {
+        return BoardUtils.freeRandom(size, dice, pt -> isFree(pt));
     }
 
     public boolean isBarrier(Point pt) {
@@ -311,9 +346,9 @@ public class Battlecity implements Field {
     public List<Tank> allTanks() {
         List<Tank> result = new LinkedList<>(ais);
         for (Player player : players) {
-//            if (player.getTank().isAlive()) { // TODO разремарить с тестом
+            if (player.getHero() != null) {
                 result.add(player.getHero());
-//            }
+            }
         }
         return result;
     }
@@ -347,7 +382,7 @@ public class Battlecity implements Field {
 
     @Override
     public BoardReader reader() {
-        return new BoardReader() {
+        return new BoardReader<Player>() {
             private int size = Battlecity.this.size;
 
             @Override
@@ -356,7 +391,7 @@ public class Battlecity implements Field {
             }
 
             @Override
-            public Iterable<? extends Point> elements() {
+            public Iterable<? extends Point> elements(Player player) {
                 return new LinkedList<Point>() {{
                     addAll(Battlecity.this.borders());
                     addAll(Battlecity.this.allTanks());

@@ -44,7 +44,7 @@ public class WallsTest {
     private Field field;
     private Walls walls;
     private PrinterFactory factory = new PrinterFactoryImpl();
-    private Dice dice = LocalGameRunner.getDice(LocalGameRunner.generateXorShift("kgyhfksdfksf", SIZE, 1000));
+    private Dice dice = LocalGameRunner.getDice("kgyhfksdfksf", SIZE, 1000);
 
     @Before
     public void setup() {
@@ -71,14 +71,14 @@ public class WallsTest {
     }
 
     private String print(final Walls walls) {
-        Printer<String> printer = factory.getPrinter(new BoardReader() {
+        Printer<String> printer = factory.getPrinter(new BoardReader<Player>() {
             @Override
             public int size() {
                 return SIZE;
             }
 
             @Override
-            public Iterable<? extends Point> elements() {
+            public Iterable<? extends Point> elements(Player player) {
                 return walls;
             }
         }, null);

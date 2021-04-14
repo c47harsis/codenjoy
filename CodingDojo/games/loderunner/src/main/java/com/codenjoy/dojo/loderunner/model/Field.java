@@ -37,7 +37,7 @@ public interface Field extends GameField<Player> {
 
     boolean isPit(Point pt);
 
-    Optional<Point> getFreeRandom();
+    Optional<Point> freeRandom();
 
     boolean isLadder(Point pt);
 
@@ -68,4 +68,6 @@ public interface Field extends GameField<Player> {
     List<Hero> getHeroes();
 
     void suicide(Hero hero);
+
+    List<Brick> bricks();
 }

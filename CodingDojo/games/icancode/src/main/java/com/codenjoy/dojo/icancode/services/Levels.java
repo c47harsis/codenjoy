@@ -23,34 +23,24 @@ package com.codenjoy.dojo.icancode.services;
  */
 
 
-import com.codenjoy.dojo.client.Encoding;
+import com.codenjoy.dojo.icancode.model.Elements;
+import com.codenjoy.dojo.icancode.model.Level;
+import com.codenjoy.dojo.icancode.model.LevelImpl;
 import com.codenjoy.dojo.icancode.services.levels.*;
 import com.codenjoy.dojo.services.LengthToXY;
+import com.codenjoy.dojo.utils.LevelUtils;
 import com.codenjoy.dojo.utils.TestUtils;
-import com.codenjoy.dojo.icancode.model.Elements;
-import com.codenjoy.dojo.icancode.model.LevelImpl;
-import com.codenjoy.dojo.icancode.model.Level;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.codenjoy.dojo.icancode.services.GameSettings.Keys.VIEW_SIZE;
+
 public final class Levels {
 
-    // TODO to use another way to change this data
-    public static int VIEW_SIZE;
-
-    public static final int VIEW_SIZE_TESTING = 16;
     public static final int COUNT_LAYERS = 3;
-
-    static {
-        init();
-    }
-
-    public static void init() {
-        VIEW_SIZE = 20;
-    }
 
     private Levels() {
         throw new IllegalAccessError("Utility class");
@@ -110,7 +100,7 @@ public final class Levels {
     }
 
     public static Level load(String levelMap, GameSettings settings) {
-        return new LevelImpl(resize(decorate(Encoding.removeN(levelMap)), size()), settings);
+        return new LevelImpl(resize(decorate(LevelUtils.clear(levelMap)), settings.integer(VIEW_SIZE)), settings);
     }
 
     // TODO я думаю этот метод не нужен тут, так как он дублирует Layered view
@@ -124,7 +114,7 @@ public final class Levels {
             return level;
         }
 
-        int before = (int)((toSize - currentSize)/2);
+        int before = (toSize - currentSize)/2;
         int after = (toSize - currentSize - before);
         String result = "";
         for (int i = 0; i < currentSize; i++) {
@@ -328,9 +318,5 @@ public final class Levels {
 //        System.out.print(actual);
 //        System.out.println("-----------");
         return actual.equals(expected);
-    }
-
-    public static int size() {
-        return VIEW_SIZE; // TODO think about it
     }
 }

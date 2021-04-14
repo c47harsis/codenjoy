@@ -47,9 +47,6 @@ public class Snake implements Field {
         this.generator = generator;
         this.startLength = settings.integer(START_SNAKE_LENGTH);
         this.settings = settings;
-        if (size%2 == 0) {
-            size++;
-        }
         this.size = size;
         this.walls = walls;
     }
@@ -174,7 +171,7 @@ public class Snake implements Field {
 
     @Override
     public BoardReader reader() {
-        return new BoardReader() {
+        return new BoardReader<Player>() {
             private int size = Snake.this.size;
 
             @Override
@@ -183,7 +180,7 @@ public class Snake implements Field {
             }
 
             @Override
-            public Iterable<? extends Point> elements() {
+            public Iterable<? extends Point> elements(Player player) {
                 return new LinkedList<Point>(){{
                     walls.forEach(this::add);
                     snake().forEach(this::add);

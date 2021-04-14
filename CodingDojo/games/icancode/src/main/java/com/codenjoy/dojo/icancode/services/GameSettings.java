@@ -23,15 +23,17 @@ package com.codenjoy.dojo.icancode.services;
  */
 
 
+import com.codenjoy.dojo.icancode.model.items.ZombieBrain;
 import com.codenjoy.dojo.icancode.services.levels.Level;
 import com.codenjoy.dojo.services.settings.SettingsImpl;
 import com.codenjoy.dojo.services.settings.SettingsReader;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static com.codenjoy.dojo.icancode.services.GameSettings.Keys.*;
 
-public final class GameSettings extends SettingsImpl implements SettingsReader<GameSettings> {
+public class GameSettings extends SettingsImpl implements SettingsReader<GameSettings> {
 
     public static final String CLASSIC_TRAINING = "Single training & all in one final";
     public static final String ALL_SINGLE = "All levels are single";
@@ -55,8 +57,12 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
         GUN_SHOT_QUEUE("Heroes gun need to relax after a series of shots"),
         GUN_REST_TIME("Heroes gun rest time(ticks)"),
         DEFAULT_PERKS("Default hero perks on training and contest"),
+        TICKS_PER_NEW_ZOMBIE("Ticks per new zombie"),
+        COUNT_ZOMBIES_ON_MAP("Count zombies"),
+        WALK_EACH_TICKS("Zombie walks tick timeout"),
         GAME_MODE("Game mode"),
         ROOM_SIZE("Room size"),
+        VIEW_SIZE("Map view size"),
         LEVELS_COUNT("Levels count");
 
         private String key;
@@ -69,6 +75,11 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
         public String key() {
             return key;
         }
+    }
+
+    @Override
+    public List<Key> allKeys() {
+        return Arrays.asList(Keys.values());
     }
 
     public GameSettings() {
@@ -90,10 +101,16 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
 
         string(DEFAULT_PERKS, ",ajm");
 
+        integer(TICKS_PER_NEW_ZOMBIE, 20);
+        integer(COUNT_ZOMBIES_ON_MAP, 4);
+        integer(WALK_EACH_TICKS, 2);
+
         options(GAME_MODE, Arrays.asList(
                 CLASSIC_TRAINING, ALL_SINGLE, ALL_IN_ROOMS, TRAINING_MULTIMAP),
                 CLASSIC_TRAINING);
         integer(ROOM_SIZE, 5);
+
+        integer(VIEW_SIZE, 20);
 
         integer(LEVELS_COUNT, 0);
         Levels.setup(this);
@@ -108,6 +125,10 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
     public String levelMap(int index) {
         String prefix = levelPrefix(index);
         return string(() -> prefix + "map");
+    }
+
+    public ZombieBrain zombieBrain() {
+        return new ZombieBrain();
     }
 
     public GameSettings addLevel(int index, Level level) {

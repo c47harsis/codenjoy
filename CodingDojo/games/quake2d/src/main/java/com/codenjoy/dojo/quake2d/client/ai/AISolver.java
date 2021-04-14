@@ -22,19 +22,14 @@ package com.codenjoy.dojo.quake2d.client.ai;
  * #L%
  */
 
-import com.codenjoy.dojo.client.Closeable;
 import com.codenjoy.dojo.services.Direction;
 import com.codenjoy.dojo.client.Solver;
-import com.codenjoy.dojo.client.WebSocketRunner;
 import com.codenjoy.dojo.quake2d.client.Board;
 import com.codenjoy.dojo.quake2d.model.Elements;
 import com.codenjoy.dojo.services.*;
 import com.codenjoy.dojo.services.algs.DeikstraFindWay;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class AISolver implements Solver<Board> {
 
@@ -91,7 +86,7 @@ public class AISolver implements Solver<Board> {
         Point from = board.getMe();
 
         List<Point> to_OtherHero = board.get(Elements.OTHER_HERO);
-        List<Point> to_Abilities = board.get(Elements.SUPER_ATTACK);
+        List<Point> to_Abilities = board.get(Elements.SUPER_WEAPON);
         to_Abilities.addAll(board.get(Elements.SUPER_DEFENCE));
         to_Abilities.addAll(board.get(Elements.HEALTH_PACKAGE));
         List<Point> to_Walls = board.get(Elements.WALL);
@@ -117,20 +112,11 @@ public class AISolver implements Solver<Board> {
     }
 
     private List<Direction> inversionOfDirection(int pSize, Point pFrom, List<Point> pTo_OtherHero, DeikstraFindWay.Possible pMap) {
-        List<Direction> locDirectionList = way.getShortestWay(pSize, pFrom, pTo_OtherHero, pMap);
-        Direction locDirection = locDirectionList.get(0);
-        if (locDirection == Direction.UP) {
-            locDirection = Direction.DOWN;
-        } else if (locDirection == Direction.DOWN) {
-            locDirection = Direction.UP;
-        } else if (locDirection == Direction.LEFT) {
-            locDirection = Direction.RIGHT;
-        } else {
-            locDirection = Direction.LEFT;
+        List<Direction> path = way.getShortestWay(pSize, pFrom, pTo_OtherHero, pMap);
+        if (path.isEmpty()) {
+            return Arrays.asList();
         }
-        locDirectionList = new LinkedList<Direction>();
-        locDirectionList.add(locDirection);
-        return locDirectionList;
+        return Arrays.asList(path.get(0).inverted());
     }
 
 //    private Hero isAnyHeroWithAbility() {
@@ -143,7 +129,7 @@ public class AISolver implements Solver<Board> {
 //    }
 
     private Map<Elements, Integer> getDestinationToObject(Board board, int pSize, Point pFrom) {
-        Elements[] analyzeElements = {Elements.OTHER_HERO, Elements.SUPER_ATTACK, Elements.SUPER_DEFENCE,
+        Elements[] analyzeElements = {Elements.OTHER_HERO, Elements.SUPER_WEAPON, Elements.SUPER_DEFENCE,
                                       Elements.HEALTH_PACKAGE, Elements.BULLET};
         Map<Elements, Integer> variantsWays = new HashMap<>(analyzeElements.length);
         DeikstraFindWay.Possible map = possible(board);

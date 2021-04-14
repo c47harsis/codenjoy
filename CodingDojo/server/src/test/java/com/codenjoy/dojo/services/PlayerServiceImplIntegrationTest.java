@@ -35,6 +35,8 @@ import com.codenjoy.dojo.services.multiplayer.GamePlayer;
 import com.codenjoy.dojo.services.multiplayer.MultiplayerType;
 import com.codenjoy.dojo.services.printer.BoardReader;
 import com.codenjoy.dojo.services.printer.PrinterFactory;
+import com.codenjoy.dojo.services.room.RoomService;
+import com.codenjoy.dojo.services.semifinal.SemifinalService;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,7 +53,7 @@ public class PlayerServiceImplIntegrationTest {
 
     private PlayerService service;
 
-    private Semifinal semifinal;
+    private SemifinalService semifinal;
     private ConfigProperties config;
     private ActionLogger actionLogger;
     private AutoSaver autoSaver;
@@ -59,6 +61,7 @@ public class PlayerServiceImplIntegrationTest {
     private GameSaver saver;
     private GameService gameService;
     private Controller screenController;
+    private RoomService roomService;
     private Controller playerController;
     private PlayerGames playerGames;
     private Registration registration;
@@ -81,6 +84,9 @@ public class PlayerServiceImplIntegrationTest {
                 PlayerServiceImplIntegrationTest.this.gameService
                         = this.gameService = mock(GameService.class);
 
+                PlayerServiceImplIntegrationTest.this.roomService
+                        = this.roomService = mock(RoomService.class);
+
                 PlayerServiceImplIntegrationTest.this.autoSaver
                         = this.autoSaver = mock(AutoSaver.class);
 
@@ -101,7 +107,7 @@ public class PlayerServiceImplIntegrationTest {
                 config.setRegistrationOpened(true);
 
                 PlayerServiceImplIntegrationTest.this.semifinal
-                        = this.semifinal = mock(Semifinal.class);
+                        = this.semifinal = mock(SemifinalService.class);
 
                 this.isAiNeeded = true;
             }
@@ -130,7 +136,10 @@ public class PlayerServiceImplIntegrationTest {
         when(gameService.getGameType(anyString(), anyString())).thenAnswer(
                 inv -> getOrCreateGameType(inv.getArgument(0))
         );
+
+        // по умолчанию все команаты будут активными и открытыми для регистрации
         when(gameService.exists(anyString())).thenReturn(true);
+        when(roomService.isOpened(anyString())).thenReturn(true);
 
         when(chat.getLastMessageIds()).thenReturn(new HashMap<>());
 
@@ -283,6 +292,18 @@ public class PlayerServiceImplIntegrationTest {
         assertEquals("[]", service.getAll("game4").toString()); // нет такой игры
         assertEquals("[player1_updated]", service.getAllInRoom("room4").toString());
 
+        // удалили всех из комнаты 1
+        service.removeAll("room2");
+        expected = "[game1-super-ai_updated, player6_updated]";
+        assertEquals(expected, service.getAll("game1").toString());
+        assertEquals(expected, service.getAllInRoom("room1").toString());
+        assertEquals("[player1_updated]", service.getAll("game2").toString()); // тут отличие game2 != room2
+        assertEquals("[]", service.getAllInRoom("room2").toString()); // тут отличие game2 != room2
+        expected = "[game3-super-ai_updated, player7_updated]";
+        assertEquals(expected, service.getAll("game3").toString());
+        assertEquals(expected, service.getAllInRoom("room3").toString());
+        assertEquals("[]", service.getAll("game4").toString()); // нет такой игры
+        assertEquals("[player1_updated]", service.getAllInRoom("room4").toString());
 
         // удалили всех нафиг
         service.removeAll();

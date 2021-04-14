@@ -25,13 +25,14 @@ package com.codenjoy.dojo.services.mocks;
 import com.codenjoy.dojo.services.settings.SettingsImpl;
 import com.codenjoy.dojo.services.settings.SettingsReader;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static com.codenjoy.dojo.services.mocks.FirstGameSettings.Keys.PARAMETER1;
 import static com.codenjoy.dojo.services.mocks.FirstGameSettings.Keys.PARAMETER2;
-import static java.util.stream.Collectors.toList;
 
-public class FirstGameSettings extends SettingsImpl implements SettingsReader<FirstGameSettings> {
+public class FirstGameSettings extends SettingsImpl
+        implements SettingsReader<FirstGameSettings> {
 
     public enum Keys implements Key {
 
@@ -50,7 +51,16 @@ public class FirstGameSettings extends SettingsImpl implements SettingsReader<Fi
         }
     }
 
+    @Override
+    public List<Key> allKeys() {
+        return Arrays.asList(Keys.values());
+    }
+
     public FirstGameSettings() {
+        init();
+    }
+
+    public void init() {
         integer(PARAMETER1, 12);
         integerValue(PARAMETER1).update(15);
         bool(PARAMETER2, true);

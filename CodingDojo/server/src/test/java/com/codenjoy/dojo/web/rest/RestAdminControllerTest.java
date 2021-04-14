@@ -25,9 +25,11 @@ package com.codenjoy.dojo.web.rest;
 import com.codenjoy.dojo.CodenjoyContestApplication;
 import com.codenjoy.dojo.config.meta.SQLiteProfile;
 import com.codenjoy.dojo.services.*;
-import com.codenjoy.dojo.services.mocks.FirstGameType;
-import com.codenjoy.dojo.services.mocks.SecondGameType;
+import com.codenjoy.dojo.services.mocks.FirstSemifinalGameType;
+import com.codenjoy.dojo.services.mocks.SecondSemifinalGameType;
 import com.codenjoy.dojo.services.room.RoomService;
+import com.codenjoy.dojo.services.semifinal.SemifinalSettings;
+import com.codenjoy.dojo.services.semifinal.SemifinalSettingsImpl;
 import com.codenjoy.dojo.web.rest.pojo.PParameters;
 import org.json.JSONObject;
 import org.junit.Before;
@@ -44,7 +46,14 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
+
 import static com.codenjoy.dojo.stuff.SmartAssert.assertEquals;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(classes = CodenjoyContestApplication.class,
@@ -56,13 +65,19 @@ import static org.mockito.Mockito.*;
 @WebAppConfiguration
 public class RestAdminControllerTest extends AbstractRestControllerTest {
 
-    private static SemifinalSettings saved;
+    private static Map<String, SemifinalSettings> saved;
 
     @TestConfiguration
     public static class ContextConfiguration {
         @Bean("gameService")
         public GameServiceImpl gameService() {
-            return AbstractRestControllerTest.gameService();
+            return new GameServiceImpl(){
+                @Override
+                public Collection<? extends Class<? extends GameType>> findInPackage(String packageName) {
+                    return Arrays.asList(FirstSemifinalGameType.class, SecondSemifinalGameType.class);
+                }
+            };
+
         }
     }
 
@@ -88,88 +103,221 @@ public class RestAdminControllerTest extends AbstractRestControllerTest {
 
         playerService.removeAll();
         saveService.removeAllSaves();
-        roomService.removeAll();
-
-        resetAllSettings();
-    }
-
-    private void resetAllSettings() {
-        if (saved == null) {
-            saved = semifinal.clone();
-        } else {
-            semifinal.apply(saved);
-        }
+        roomService.removeAll(); // тут чистятся все сеттинги
     }
 
     @Test
     public void shouldStartStopGame_oneRoom() {
         // given
-        assertEquals(false, service.getEnabled("name"));
+        assertEquals(false, service.isRoomActive("name"));
         assertEquals("false", get("/rest/admin/room/name/pause"));
 
-        roomService.create("name", new FirstGameType());
+        register("player", "ip", "name", "first");
 
         // TODO я думаю что сервис напрямую дергать не надо, т.к. его никто так вызывать не будет, только через rest
-        assertEquals(true, service.getEnabled("name"));
+        assertEquals(true, service.isRoomActive("name"));
         assertEquals("true", get("/rest/admin/room/name/pause"));
 
+        assertPlayersInActiveRooms("[player->name]");
+
         // when
-        service.setEnabled("name", false);
+        service.setRoomActive("name", false);
 
         // then
-        assertEquals(false, service.getEnabled("name"));
+        assertEquals(false, service.isRoomActive("name"));
         assertEquals("false", get("/rest/admin/room/name/pause"));
+
+        assertPlayersInActiveRooms("[]");
 
         // when
         assertEquals("", get("/rest/admin/room/name/pause/true"));
 
         // then
-        assertEquals(true, service.getEnabled("name"));
+        assertEquals(true, service.isRoomActive("name"));
         assertEquals("true", get("/rest/admin/room/name/pause"));
+
+        assertPlayersInActiveRooms("[player->name]");
+    }
+
+    public void assertPlayersInActiveRooms(String expected) {
+        assertEquals(expected,
+                playerGames.active().stream()
+                    .map(pg -> pg.getPlayer().getId() + "->" + pg.getRoom())
+                    .collect(toList())
+                    .toString());
     }
 
     @Test
     public void shouldStartStopGame_severalRooms() {
         // given
-        assertEquals(false, service.getEnabled("name1"));
+        assertEquals(false, service.isRoomActive("name1"));
         assertEquals("false", get("/rest/admin/room/name2/pause"));
 
-        roomService.create("name1", new FirstGameType());
-        roomService.create("name2", new SecondGameType());
+        register("player1", "ip1", "name1", "first");
+        register("player2", "ip2", "name1", "first");
+        register("player3", "ip3", "name2", "second");
 
-        assertEquals(true, service.getEnabled("name1"));
+        assertEquals(true, service.isRoomActive("name1"));
         assertEquals("true", get("/rest/admin/room/name2/pause"));
+
+        assertPlayersInActiveRooms("[player1->name1, player2->name1, player3->name2]");
 
         // when
-        service.setEnabled("name1", false);
+        service.setRoomActive("name1", false);
 
         // then
-        assertEquals(false, service.getEnabled("name1"));
+        assertEquals(false, service.isRoomActive("name1"));
         assertEquals("true", get("/rest/admin/room/name2/pause"));
+
+        assertPlayersInActiveRooms("[player3->name2]");
 
         // when
         assertEquals("", get("/rest/admin/room/name1/pause/true"));
 
         // then
-        assertEquals(true, service.getEnabled("name1"));
+        assertEquals(true, service.isRoomActive("name1"));
         assertEquals("true", get("/rest/admin/room/name2/pause"));
+
+        assertPlayersInActiveRooms("[player1->name1, player2->name1, player3->name2]");
     }
 
     @Test
     public void shouldStartStopGame_validation() {
         // when then
         assertException("Room name is invalid: '$bad$'",
-                () -> service.getEnabled("$bad$"));
+                () -> service.isRoomActive("$bad$"));
 
         assertError("java.lang.IllegalArgumentException: Room name is invalid: '$bad$'",
                 "/rest/admin/room/$bad$/pause/true");
 
         // when then
         assertException("Room name is invalid: '$bad$'",
-                () -> service.setEnabled("$bad$", true));
+                () -> service.setRoomActive("$bad$", true));
 
         assertError("java.lang.IllegalArgumentException: Room name is invalid: '$bad$'",
                 "/rest/admin/room/$bad$/pause");
+    }
+
+    @Test
+    public void shouldOpenCloseRoomRegistration_oneRoom() {
+        // given
+        // комнаты нет, но в нее можно зарегаться
+        assertEquals(true, service.isRoomRegistrationOpened("name"));
+        assertEquals("true", get("/rest/admin/room/name/registration/open"));
+
+        register("player1", "ip1", "name", "first");
+        assertPlayersInActiveRooms("[player1->name]");
+
+        // а теперь она есть, т.к. зашел первый пользователь
+        // и по умолчанию регистрация так же открыта
+        assertEquals(true, service.isRoomRegistrationOpened("name"));
+        assertEquals("true", get("/rest/admin/room/name/registration/open"));
+
+        assertEquals(true, playerService.isRegistrationOpened("name"));
+
+        // when
+        service.setRoomRegistrationOpened("name", false);
+
+        // then
+        assertEquals(false, service.isRoomRegistrationOpened("name"));
+        assertEquals("false", get("/rest/admin/room/name/registration/open"));
+
+        assertEquals(false, playerService.isRegistrationOpened("name"));
+
+        // when
+        register("player2", "ip2", "name", "first"); // not created
+
+        // then
+        assertPlayersInActiveRooms("[player1->name]");
+
+        // when
+        assertEquals("", get("/rest/admin/room/name/registration/open/true"));
+
+        // then
+        assertEquals(true, service.isRoomRegistrationOpened("name"));
+        assertEquals("true", get("/rest/admin/room/name/registration/open"));
+
+        assertEquals(true, playerService.isRegistrationOpened("name"));
+
+        // when
+        register("player2", "ip2", "name", "first");
+
+        // then
+        assertPlayersInActiveRooms("[player1->name, player2->name]");
+    }
+
+    @Test
+    public void shouldOpenCloseRoomRegistration_severalRooms() {
+        // given
+        // комнаты нет, но в нее можно зарегаться
+        assertEquals(true, service.isRoomRegistrationOpened("name1"));
+        assertEquals("true", get("/rest/admin/room/name2/registration/open"));
+
+        register("player1", "ip1", "name1", "first");
+        register("player2", "ip2", "name1", "first");
+        register("player3", "ip3", "name2", "second");
+        assertPlayersInActiveRooms("[player1->name1, player2->name1, player3->name2]");
+
+        // а теперь она есть, т.к. зашел первый пользователь
+        // и по умолчанию регистрация так же открыта
+        assertEquals(true, service.isRoomRegistrationOpened("name1"));
+        assertEquals("true", get("/rest/admin/room/name2/registration/open"));
+
+        assertEquals(true, playerService.isRegistrationOpened("name1"));
+        assertEquals(true, playerService.isRegistrationOpened("name2"));
+
+        // when
+        service.setRoomRegistrationOpened("name1", false);
+
+        // then
+        assertEquals(false, service.isRoomRegistrationOpened("name1"));
+        assertEquals("true", get("/rest/admin/room/name2/registration/open"));
+
+        assertEquals(false, playerService.isRegistrationOpened("name1"));
+        assertEquals(true, playerService.isRegistrationOpened("name2"));
+
+        // when
+        register("player4", "ip4", "name1", "first"); // not created
+        register("player5", "ip5", "name2", "second");
+
+        // then
+        assertPlayersInActiveRooms("[player1->name1, player2->name1, player3->name2, " +
+                "player5->name2]");
+
+        // when
+        assertEquals("", get("/rest/admin/room/name1/registration/open/true"));
+
+        // then
+        assertEquals(true, service.isRoomRegistrationOpened("name1"));
+        assertEquals("true", get("/rest/admin/room/name2/registration/open"));
+
+        assertEquals(true, playerService.isRegistrationOpened("name1"));
+        assertEquals(true, playerService.isRegistrationOpened("name2"));
+
+        // when
+        register("player6", "ip6", "name1", "first");
+        register("player7", "ip7", "name2", "second");
+
+        // then
+        assertPlayersInActiveRooms("[player1->name1, player2->name1, player3->name2, " +
+                "player5->name2, player6->name1, player7->name2]");
+    }
+
+    @Test
+    public void shouldOpenCloseRoomRegistration_validation() {
+        // when then
+        assertException("Room name is invalid: '$bad$'",
+                () -> service.isRoomRegistrationOpened("$bad$"));
+
+        assertError("java.lang.IllegalArgumentException: Room name is invalid: '$bad$'",
+                "/rest/admin/room/$bad$/registration/open/true");
+
+        // when then
+        assertException("Room name is invalid: '$bad$'",
+                () -> service.setRoomRegistrationOpened("$bad$", true));
+
+        assertError("java.lang.IllegalArgumentException: Room name is invalid: '$bad$'",
+                "/rest/admin/room/$bad$/registration/open");
     }
 
     @Test
@@ -252,7 +400,7 @@ public class RestAdminControllerTest extends AbstractRestControllerTest {
         PlayerGame playerGame4 = register("player4", "ip4", "room3", "second");
 
         // when
-        assertEquals("", get("/rest/admin/room/room1/reload"));
+        assertEquals("", get("/rest/admin/room/room1/player/reload"));
 
         // then
         verifyNewGame(playerGame1, atLeastOnce());
@@ -264,10 +412,10 @@ public class RestAdminControllerTest extends AbstractRestControllerTest {
     @Test
     public void shouldReloadAllPlayersInRoom_validation() {
         assertException("Room name is invalid: '$bad$'",
-                () -> service.reload("$bad$"));
+                () -> service.reloadPlayers("$bad$"));
 
         assertError("java.lang.IllegalArgumentException: Room name is invalid: '$bad$'",
-                "/rest/admin/room/$bad$/reload");
+                "/rest/admin/room/$bad$/player/reload");
     }
 
     @Test
@@ -434,24 +582,24 @@ public class RestAdminControllerTest extends AbstractRestControllerTest {
         PParameters settings1 = service.getSettings("name1", "first");
         assertEquals("[[Parameter 1:Integer = multiline[false] def[12] val[15]], " +
                         "[Parameter 2:Boolean = def[true] val[true]], " +
-                        "[Semifinal enabled:Boolean = def[false] val[false]], " +
-                        "[Semifinal timeout:Integer = multiline[false] def[900] val[900]], " +
-                        "[Semifinal percentage:Boolean = def[true] val[true]], " +
-                        "[Semifinal limit:Integer = multiline[false] def[50] val[50]], " +
-                        "[Semifinal reset board:Boolean = def[true] val[true]], " +
-                        "[Semifinal shuffle board:Boolean = def[true] val[true]]]",
+                        "[[Semifinal] Enabled:Boolean = def[false] val[false]], " +
+                        "[[Semifinal] Timeout:Integer = multiline[false] def[900] val[900]], " +
+                        "[[Semifinal] Percentage:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Limit:Integer = multiline[false] def[50] val[50]], " +
+                        "[[Semifinal] Reset board:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Shuffle board:Boolean = def[true] val[true]]]",
                 settings1.build().toString());
 
         JSONObject settings2 = new JSONObject(get("/rest/admin/room/name2/settings/second"));
         assertEquals("{'parameters':[" +
                         "{'def':'43','multiline':false,'name':'Parameter 3','options':['43'],'type':'editbox','value':'43','valueType':'Integer'}," +
                         "{'def':'false','multiline':false,'name':'Parameter 4','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'false','multiline':false,'name':'Semifinal enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
-                        "{'def':'900','multiline':false,'name':'Semifinal timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'50','multiline':false,'name':'Semifinal limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
+                        "{'def':'false','multiline':false,'name':'[Semifinal] Enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
+                        "{'def':'900','multiline':false,'name':'[Semifinal] Timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'50','multiline':false,'name':'[Semifinal] Limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
                 quote(settings2.toString()));
 
         // when
@@ -469,24 +617,24 @@ public class RestAdminControllerTest extends AbstractRestControllerTest {
         settings1 = service.getSettings("name1", "first");
         assertEquals("[[Parameter 1:Integer = multiline[false] def[12] val[30]], " +
                         "[Parameter 2:Boolean = def[true] val[false]], " +
-                        "[Semifinal enabled:Boolean = def[false] val[false]], " +
-                        "[Semifinal timeout:Integer = multiline[false] def[900] val[900]], " +
-                        "[Semifinal percentage:Boolean = def[true] val[true]], " +
-                        "[Semifinal limit:Integer = multiline[false] def[50] val[50]], " +
-                        "[Semifinal reset board:Boolean = def[true] val[true]], " +
-                        "[Semifinal shuffle board:Boolean = def[true] val[true]]]",
+                        "[[Semifinal] Enabled:Boolean = def[false] val[false]], " +
+                        "[[Semifinal] Timeout:Integer = multiline[false] def[900] val[900]], " +
+                        "[[Semifinal] Percentage:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Limit:Integer = multiline[false] def[50] val[50]], " +
+                        "[[Semifinal] Reset board:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Shuffle board:Boolean = def[true] val[true]]]",
                 settings1.build().toString());
 
         settings2 = new JSONObject(get("/rest/admin/room/name2/settings/second"));
         assertEquals("{'parameters':[" +
                         "{'def':'43','multiline':false,'name':'Parameter 3','options':['43','55'],'type':'editbox','value':'55','valueType':'Integer'}," +
                         "{'def':'false','multiline':false,'name':'Parameter 4','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'false','multiline':false,'name':'Semifinal enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
-                        "{'def':'900','multiline':false,'name':'Semifinal timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'50','multiline':false,'name':'Semifinal limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
+                        "{'def':'false','multiline':false,'name':'[Semifinal] Enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
+                        "{'def':'900','multiline':false,'name':'[Semifinal] Timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'50','multiline':false,'name':'[Semifinal] Limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
                 quote(settings2.toString()));
     }
 
@@ -497,24 +645,24 @@ public class RestAdminControllerTest extends AbstractRestControllerTest {
         PParameters settings1 = service.getSettings("name1", "first");
         assertEquals("[[Parameter 1:Integer = multiline[false] def[12] val[15]], " +
                         "[Parameter 2:Boolean = def[true] val[true]], " +
-                        "[Semifinal enabled:Boolean = def[false] val[false]], " +
-                        "[Semifinal timeout:Integer = multiline[false] def[900] val[900]], " +
-                        "[Semifinal percentage:Boolean = def[true] val[true]], " +
-                        "[Semifinal limit:Integer = multiline[false] def[50] val[50]], " +
-                        "[Semifinal reset board:Boolean = def[true] val[true]], " +
-                        "[Semifinal shuffle board:Boolean = def[true] val[true]]]",
+                        "[[Semifinal] Enabled:Boolean = def[false] val[false]], " +
+                        "[[Semifinal] Timeout:Integer = multiline[false] def[900] val[900]], " +
+                        "[[Semifinal] Percentage:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Limit:Integer = multiline[false] def[50] val[50]], " +
+                        "[[Semifinal] Reset board:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Shuffle board:Boolean = def[true] val[true]]]",
                 settings1.build().toString());
 
         JSONObject settings2 = new JSONObject(get("/rest/admin/room/name2/settings/second"));
         assertEquals("{'parameters':[" +
                         "{'def':'43','multiline':false,'name':'Parameter 3','options':['43'],'type':'editbox','value':'43','valueType':'Integer'}," +
                         "{'def':'false','multiline':false,'name':'Parameter 4','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'false','multiline':false,'name':'Semifinal enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
-                        "{'def':'900','multiline':false,'name':'Semifinal timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'50','multiline':false,'name':'Semifinal limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
+                        "{'def':'false','multiline':false,'name':'[Semifinal] Enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
+                        "{'def':'900','multiline':false,'name':'[Semifinal] Timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'50','multiline':false,'name':'[Semifinal] Limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
                 quote(settings2.toString()));
 
         // when
@@ -533,125 +681,128 @@ public class RestAdminControllerTest extends AbstractRestControllerTest {
         settings1 = service.getSettings("name1", "first");
         assertEquals("[[Parameter 1:Integer = multiline[false] def[12] val[30]], " +
                         "[Parameter 2:Boolean = def[true] val[false]], " +
-                        "[Semifinal enabled:Boolean = def[false] val[false]], " +
-                        "[Semifinal timeout:Integer = multiline[false] def[900] val[900]], " +
-                        "[Semifinal percentage:Boolean = def[true] val[true]], " +
-                        "[Semifinal limit:Integer = multiline[false] def[50] val[50]], " +
-                        "[Semifinal reset board:Boolean = def[true] val[true]], " +
-                        "[Semifinal shuffle board:Boolean = def[true] val[true]]]",
+                        "[[Semifinal] Enabled:Boolean = def[false] val[false]], " +
+                        "[[Semifinal] Timeout:Integer = multiline[false] def[900] val[900]], " +
+                        "[[Semifinal] Percentage:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Limit:Integer = multiline[false] def[50] val[50]], " +
+                        "[[Semifinal] Reset board:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Shuffle board:Boolean = def[true] val[true]]]",
                 settings1.build().toString());
 
         settings2 = new JSONObject(get("/rest/admin/room/name2/settings/second"));
         assertEquals("{'parameters':[" +
                         "{'def':'43','multiline':false,'name':'Parameter 3','options':['43','55'],'type':'editbox','value':'55','valueType':'Integer'}," +
                         "{'def':'false','multiline':false,'name':'Parameter 4','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'false','multiline':false,'name':'Semifinal enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
-                        "{'def':'900','multiline':false,'name':'Semifinal timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'50','multiline':false,'name':'Semifinal limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
+                        "{'def':'false','multiline':false,'name':'[Semifinal] Enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
+                        "{'def':'900','multiline':false,'name':'[Semifinal] Timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'50','multiline':false,'name':'[Semifinal] Limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
                 quote(settings2.toString()));
     }
 
     // тест такой же как и прошлый, только мы проверяем группу настроек semifinal
     @Test
     public void shouldSetSettings_onlyKeyValue_semifinal() {
+        // given
         PParameters settings1 = service.getSettings("name1", "first");
         assertEquals("[[Parameter 1:Integer = multiline[false] def[12] val[15]], " +
                         "[Parameter 2:Boolean = def[true] val[true]], " +
-                        "[Semifinal enabled:Boolean = def[false] val[false]], " +
-                        "[Semifinal timeout:Integer = multiline[false] def[900] val[900]], " +
-                        "[Semifinal percentage:Boolean = def[true] val[true]], " +
-                        "[Semifinal limit:Integer = multiline[false] def[50] val[50]], " +
-                        "[Semifinal reset board:Boolean = def[true] val[true]], " +
-                        "[Semifinal shuffle board:Boolean = def[true] val[true]]]",
+                        "[[Semifinal] Enabled:Boolean = def[false] val[false]], " +
+                        "[[Semifinal] Timeout:Integer = multiline[false] def[900] val[900]], " +
+                        "[[Semifinal] Percentage:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Limit:Integer = multiline[false] def[50] val[50]], " +
+                        "[[Semifinal] Reset board:Boolean = def[true] val[true]], " +
+                        "[[Semifinal] Shuffle board:Boolean = def[true] val[true]]]",
                 settings1.build().toString());
 
         JSONObject settings2 = new JSONObject(get("/rest/admin/room/name2/settings/second"));
         assertEquals("{'parameters':[" +
                         "{'def':'43','multiline':false,'name':'Parameter 3','options':['43'],'type':'editbox','value':'43','valueType':'Integer'}," +
                         "{'def':'false','multiline':false,'name':'Parameter 4','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'false','multiline':false,'name':'Semifinal enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
-                        "{'def':'900','multiline':false,'name':'Semifinal timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'50','multiline':false,'name':'Semifinal limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
+                        "{'def':'false','multiline':false,'name':'[Semifinal] Enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
+                        "{'def':'900','multiline':false,'name':'[Semifinal] Timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'50','multiline':false,'name':'[Semifinal] Limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
                 quote(settings2.toString()));
 
         // when
-        // обновляем сеттинги передавая только ключик и значение
+        // обновляем сеттинги первой комнаты передавая только ключик и значение
         assertEquals("", post(200, "/rest/admin/room/name1/settings/first",
                 unquote("{'parameters':[" +
-                        "{'name':'Semifinal enabled','value':true}," +
-                        "{'name':'Semifinal timeout','value':500}," +
-                        "{'name':'Semifinal percentage','value':false}," +
-                        "{'name':'Semifinal limit','value':70}," +
-                        "{'name':'Semifinal reset board','value':false}," +
-                        "{'name':'Semifinal shuffle board','value':false}" +
+                        "{'name':'[Semifinal] Enabled','value':true}," +
+                        "{'name':'[Semifinal] Timeout','value':500}," +
+                        "{'name':'[Semifinal] Percentage','value':false}," +
+                        "{'name':'[Semifinal] Limit','value':70}," +
+                        "{'name':'[Semifinal] Reset board','value':false}," +
+                        "{'name':'[Semifinal] Shuffle board','value':false}" +
                         "]}")));
 
         // then
+        // смотрим что поменялось
         settings1 = service.getSettings("name1", "first");
         assertEquals("[[Parameter 1:Integer = multiline[false] def[12] val[15]], " +
                         "[Parameter 2:Boolean = def[true] val[true]], " +
-                        "[Semifinal enabled:Boolean = def[false] val[true]], " +
-                        "[Semifinal timeout:Integer = multiline[false] def[900] val[500]], " +
-                        "[Semifinal percentage:Boolean = def[true] val[false]], " +
-                        "[Semifinal limit:Integer = multiline[false] def[50] val[70]], " +
-                        "[Semifinal reset board:Boolean = def[true] val[false]], " +
-                        "[Semifinal shuffle board:Boolean = def[true] val[false]]]",
+                        "[[Semifinal] Enabled:Boolean = def[false] val[true]], " +
+                        "[[Semifinal] Timeout:Integer = multiline[false] def[900] val[500]], " +
+                        "[[Semifinal] Percentage:Boolean = def[true] val[false]], " +
+                        "[[Semifinal] Limit:Integer = multiline[false] def[50] val[70]], " +
+                        "[[Semifinal] Reset board:Boolean = def[true] val[false]], " +
+                        "[[Semifinal] Shuffle board:Boolean = def[true] val[false]]]",
                 settings1.build().toString());
 
-        // TODO semifinal settings один для всех, хотя хотелось бы чтобы был для каждой румы отдельный
+        // тут не поменялось ничего, т.к. комната другая
         settings2 = new JSONObject(get("/rest/admin/room/name2/settings/second"));
         assertEquals("{'parameters':[" +
-                        "{'def':'43','multiline':false,'name':'Parameter 3','options':['43'],'type':'editbox','value':'43','valueType':'Integer'}," +
-                        "{'def':'false','multiline':false,'name':'Parameter 4','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'false','multiline':false,'name':'Semifinal enabled','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'900','multiline':false,'name':'Semifinal timeout','options':['900','500'],'type':'editbox','value':'500','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal percentage','options':['true','false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
-                        "{'def':'50','multiline':false,'name':'Semifinal limit','options':['50','70'],'type':'editbox','value':'70','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal reset board','options':['true','false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal shuffle board','options':['true','false'],'type':'checkbox','value':'false','valueType':'Boolean'}]}",
+        "{'def':'43','multiline':false,'name':'Parameter 3','options':['43'],'type':'editbox','value':'43','valueType':'Integer'}," +
+                "{'def':'false','multiline':false,'name':'Parameter 4','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                "{'def':'false','multiline':false,'name':'[Semifinal] Enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
+                "{'def':'900','multiline':false,'name':'[Semifinal] Timeout','options':['900'],'type':'editbox','value':'900','valueType':'Integer'}," +
+                "{'def':'true','multiline':false,'name':'[Semifinal] Percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                "{'def':'50','multiline':false,'name':'[Semifinal] Limit','options':['50'],'type':'editbox','value':'50','valueType':'Integer'}," +
+                "{'def':'true','multiline':false,'name':'[Semifinal] Reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                "{'def':'true','multiline':false,'name':'[Semifinal] Shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
                 quote(settings2.toString()));
 
         // when
-        // тут пробуем передавать строковые представления
+        // для другой комнаты пробуем передавать строковые представления
         assertEquals("", post(200, "/rest/admin/room/name2/settings/second",
                 unquote("{'parameters':[" +
-                        "{'name':'Semifinal enabled','value':'false'}," +
-                        "{'name':'Semifinal timeout','value':'300'}," +
-                        "{'name':'Semifinal percentage','value':'true'}," +
-                        "{'name':'Semifinal limit','value':'60'}," +
-                        "{'name':'Semifinal reset board','value':'true'}," +
-                        "{'name':'Semifinal shuffle board','value':'true'}" +
+                        "{'name':'[Semifinal] Enabled','value':'false'}," +
+                        "{'name':'[Semifinal] Timeout','value':'300'}," +
+                        "{'name':'[Semifinal] Percentage','value':'true'}," +
+                        "{'name':'[Semifinal] Limit','value':'60'}," +
+                        "{'name':'[Semifinal] Reset board','value':'true'}," +
+                        "{'name':'[Semifinal] Shuffle board','value':'true'}" +
                         "]}")));
 
         // then
-        // TODO semifinal settings один для всех, хотя хотелось бы чтобы был для каждой румы отдельный
+        // тут ничего не поменялось
         settings1 = service.getSettings("name1", "first");
         assertEquals("[[Parameter 1:Integer = multiline[false] def[12] val[15]], " +
                         "[Parameter 2:Boolean = def[true] val[true]], " +
-                        "[Semifinal enabled:Boolean = def[false] val[false]], " +
-                        "[Semifinal timeout:Integer = multiline[false] def[900] val[300]], " +
-                        "[Semifinal percentage:Boolean = def[true] val[true]], " +
-                        "[Semifinal limit:Integer = multiline[false] def[50] val[60]], " +
-                        "[Semifinal reset board:Boolean = def[true] val[true]], " +
-                        "[Semifinal shuffle board:Boolean = def[true] val[true]]]",
+                        "[[Semifinal] Enabled:Boolean = def[false] val[true]], " +
+                        "[[Semifinal] Timeout:Integer = multiline[false] def[900] val[500]], " +
+                        "[[Semifinal] Percentage:Boolean = def[true] val[false]], " +
+                        "[[Semifinal] Limit:Integer = multiline[false] def[50] val[70]], " +
+                        "[[Semifinal] Reset board:Boolean = def[true] val[false]], " +
+                        "[[Semifinal] Shuffle board:Boolean = def[true] val[false]]]",
                 settings1.build().toString());
 
+        // а тут поменялось
         settings2 = new JSONObject(get("/rest/admin/room/name2/settings/second"));
         assertEquals("{'parameters':[" +
                         "{'def':'43','multiline':false,'name':'Parameter 3','options':['43'],'type':'editbox','value':'43','valueType':'Integer'}," +
                         "{'def':'false','multiline':false,'name':'Parameter 4','options':['false','true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'false','multiline':false,'name':'Semifinal enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
-                        "{'def':'900','multiline':false,'name':'Semifinal timeout','options':['900','300'],'type':'editbox','value':'300','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'50','multiline':false,'name':'Semifinal limit','options':['50','60'],'type':'editbox','value':'60','valueType':'Integer'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
-                        "{'def':'true','multiline':false,'name':'Semifinal shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
+                        "{'def':'false','multiline':false,'name':'[Semifinal] Enabled','options':['false'],'type':'checkbox','value':'false','valueType':'Boolean'}," +
+                        "{'def':'900','multiline':false,'name':'[Semifinal] Timeout','options':['900','300'],'type':'editbox','value':'300','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Percentage','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'50','multiline':false,'name':'[Semifinal] Limit','options':['50','60'],'type':'editbox','value':'60','valueType':'Integer'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Reset board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}," +
+                        "{'def':'true','multiline':false,'name':'[Semifinal] Shuffle board','options':['true'],'type':'checkbox','value':'true','valueType':'Boolean'}]}",
                 quote(settings2.toString()));
     }
 }

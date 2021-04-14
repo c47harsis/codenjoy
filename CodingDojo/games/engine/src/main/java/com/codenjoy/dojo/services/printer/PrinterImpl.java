@@ -75,7 +75,7 @@ class PrinterImpl implements Printer<String> {
         field = new char[size][size];
         printer.init();
 
-        printer.printAll((x, y, ch) -> PrinterImpl.this.set(x, y, ch));
+        printer.printAll(PrinterImpl.this::set);
     }
 
     private void set(int x, int y, char ch) {
@@ -108,7 +108,7 @@ class PrinterImpl implements Printer<String> {
             field = new Object[size][size];
             len = new byte[size][size];
 
-            addAll(board.elements());
+            addAll(board.elements(player));
         }
 
         @Override
@@ -131,9 +131,10 @@ class PrinterImpl implements Printer<String> {
                 }
                 byte index = len[x][y];
                 if (index >= existing.length) {
-                    throw new IllegalStateException(
-                            "There are many items in one cell: " + index +
-                                    ", expected max: " + (existing.length - 1));
+                    throw new IllegalStateException(String.format(
+                            "There are many items in one cell [%s,%s]: %s" +
+                                    ", expected max: %s",
+                            x, y, index, (existing.length - 1)));
                 }
                 existing[index] = el;
                 len[x][y]++;

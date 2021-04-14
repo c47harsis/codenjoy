@@ -42,43 +42,154 @@ public class DeikstraFindWayTest {
     @Test
     public void testFindShortestWay() {
         asrtWay("XXXXXXX\n" +
-                "XS    X\n" +
-                "X*    X\n" +
-                "X*    X\n" +
-                "X*    X\n" +
-                "X****FX\n" +
+                "XS*   X\n" +
+                "X **  X\n" +
+                "X  ** X\n" +
+                "X   **X\n" +
+                "X    FX\n" +
+                "XXXXXXX\n");
+    }
+
+    @Test
+    public void testFindShortestWay_ifThereAreTwoWays_equalsByDistance() {
+        asrtWay("XXXXXXX\n" +
+                "XS****X\n" +
+                "X XXX*X\n" +
+                "X XXX*X\n" +
+                "X XXX*X\n" +
+                "X    FX\n" +
+                "XXXXXXX\n");
+    }
+
+    @Test
+    public void testFindShortestWay_ifThereAreTwoWays_longAndShort_case1() {
+        asrtWay("XXXXXXX\n" +
+                "XS***FX\n" +
+                "X XXX X\n" +
+                "X  X  X\n" +
+                "XX X XX\n" +
+                "XX   XX\n" +
+                "XXXXXXX\n");
+    }
+
+    @Test
+    public void testFindShortestWay_ifThereAreTwoWays_longAndShort_case2() {
+        asrtWay("XXXXXXX\n" +
+                "XF***SX\n" +
+                "X XXX X\n" +
+                "X  X  X\n" +
+                "XX X XX\n" +
+                "XX   XX\n" +
+                "XXXXXXX\n");
+    }
+
+    @Test
+    public void testFindShortestWay_ifThereAreTwoWays_longAndShort_case3() {
+        asrtWay("XXXXXXX\n" +
+                "XX   XX\n" +
+                "XX X XX\n" +
+                "X  X  X\n" +
+                "X XXX X\n" +
+                "XS***FX\n" +
+                "XXXXXXX\n");
+    }
+
+    @Test
+    public void testFindShortestWay_ifThereAreTwoWays_longAndShort_case4() {
+        asrtWay("XXXXXXX\n" +
+                "XX   XX\n" +
+                "XX X XX\n" +
+                "X  X  X\n" +
+                "X XXX X\n" +
+                "XF***SX\n" +
                 "XXXXXXX\n");
     }
 
     @Test
     public void testFindShortestWayWhenBrickOnWay() {
         asrtWay("XXXXXXX\n" +
-                "XS    X\n" +
-                "X**   X\n" +
-                "XO*   X\n" +
-                "X *   X\n" +
-                "X ***FX\n" +
+                "XS*   X\n" +
+                "X **  X\n" +
+                "XO ** X\n" +
+                "X   **X\n" +
+                "X    FX\n" +
                 "XXXXXXX\n");
 
         asrtWay("XXXXXXX\n" +
-                "XS    X\n" +
-                "X**   X\n" +
-                "XO**  X\n" +
+                "XS*   X\n" +
+                "X **  X\n" +
+                "XO ** X\n" +
+                "X O **X\n" +
+                "X    FX\n" +
+                "XXXXXXX\n");
+
+        asrtWay("XXXXXXX\n" +
+                "XS*   X\n" +
+                "X **  X\n" +
+                "XO ** X\n" +
+                "X O **X\n" +
+                "X   OFX\n" +
+                "XXXXXXX\n");
+
+        asrtWay("XXXXXXX\n" +
+                "XS*   X\n" +
+                "X *** X\n" +
+                "XO O* X\n" +
+                "X O **X\n" +
+                "X   OFX\n" +
+                "XXXXXXX\n");
+
+        asrtWay("XXXXXXX\n" +
+                "XS**  X\n" +
                 "X O*  X\n" +
-                "X  **FX\n" +
+                "XO *O X\n" +
+                "X O***X\n" +
+                "X   OFX\n" +
                 "XXXXXXX\n");
 
         asrtWay("XXXXXXX\n" +
-                "XS    X\n" +
-                "X**   X\n" +
-                "XO**  X\n" +
+                "XS**  X\n" +
+                "X O*  X\n" +
+                "X  *O X\n" +
                 "X O***X\n" +
                 "X   OFX\n" +
                 "XXXXXXX\n");
 
         asrtWay("XXXXXXX\n" +
                 "XS    X\n" +
-                "X**** X\n" +
+                "X*OO  X\n" +
+                "X***O X\n" +
+                "X O***X\n" +
+                "X   OFX\n" +
+                "XXXXXXX\n");
+
+        asrtWay("XXXXXXX\n" +
+                "XS*** X\n" +
+                "X OO**X\n" +
+                "X O O*X\n" +
+                "X O  *X\n" +
+                "X   OFX\n" +
+                "XXXXXXX\n");
+
+        asrtWay("XXXXXXX\n" +
+                "XS****X\n" +
+                "X OOO*X\n" +
+                "X O O*X\n" +
+                "X O  *X\n" +
+                "X   OFX\n" +
+                "XXXXXXX\n");
+
+        asrtWay("XXXXXXX\n" +
+                "XS   OX\n" +
+                "X*OOO X\n" +
+                "X*O O X\n" +
+                "X*O***X\n" +
+                "X***OFX\n" +
+                "XXXXXXX\n");
+
+        asrtWay("XXXXXXX\n" +
+                "XS*** X\n" +
+                "X  O* X\n" +
                 "XO O* X\n" +
                 "X O **X\n" +
                 "X   OFX\n" +
@@ -122,7 +233,8 @@ public class DeikstraFindWayTest {
 
     @Test
     public void testFindShortestWayWhenOnlyOneDirectionAllowed() {
-        String board = "XXXXXXX\n" +
+        String board =
+                "XXXXXXX\n" +
                 "XS˅F˂OX\n" +
                 "X˃˅O˄OX\n" +
                 "XO˅O˄OX\n" +
@@ -132,7 +244,7 @@ public class DeikstraFindWayTest {
 
         assertP(board,
                 "{[1,4]=[RIGHT],\n" +
-                "[1,5]=[DOWN, RIGHT],\n" +
+                "[1,5]=[RIGHT, DOWN],\n" +
                 "[2,2]=[RIGHT],\n" +
                 "[2,3]=[DOWN],\n" +
                 "[2,4]=[DOWN],\n" +
@@ -145,8 +257,8 @@ public class DeikstraFindWayTest {
 
         asrtWay(board,
                 "XXXXXXX\n" +
-                "XS˅F*OX\n" +
-                "X**O*OX\n" +
+                "XS*F*OX\n" +
+                "X˃*O*OX\n" +
                 "XO*O*OX\n" +
                 "XO***OX\n" +
                 "XOOOOOX\n" +
@@ -279,53 +391,19 @@ public class DeikstraFindWayTest {
     }
 
     private void asrtWay(String map, String expected) {
-        AbstractBoard board = new AbstractBoard() {
-            @Override
-            public Elements valueOf(char ch) {
-                return Elements.valueOf(ch);
-            }
-
-            @Override
-            protected int inversionY(int y) {
-                return size - 1 - y;
-            }
-        };
-
         assertEquals(expected,
                 TestUtils.printWay(map,
                         START, FINISH,
                         NONE, WAY,
-                        board,
-                        b -> getPossible(b)));
+                        TestUtils.getBoard(Elements::valueOf),
+                        this::getPossible));
     }
 
-    // TODO to use in AITest
-    private void assertP(String map, String expected) {
-        AbstractBoard board = new AbstractBoard() {
-            @Override
-            public Elements valueOf(char ch) {
-                return Elements.valueOf(ch);
-            }
-
-            @Override
-            protected int inversionY(int y) {
-                return size - 1 - y;
-            }
-        };
-
-        board = (AbstractBoard) board.forString(map);
-
-        Map<Point, List<Direction>> ways = new DeikstraFindWay().getPossibleWays(board.size(), getPossible(board));
-
-        Map<Point, List<Direction>> result = new TreeMap<>();
-        for (Map.Entry<Point, List<Direction>> entry : ways.entrySet()) {
-            List<Direction> value = entry.getValue();
-            if (!value.isEmpty()) {
-                result.put(entry.getKey(), value);
-            }
-        }
-
-        assertEquals(expected, result.toString().replace("], [", "],\n["));
+    private void assertP(String inputBoard, String expected) {
+        assertEquals(expected,
+                TestUtils.getWay(inputBoard,
+                        Elements::valueOf,
+                        this::getPossible));
     }
 
     private <T extends AbstractBoard> DeikstraFindWay.Possible getPossible(T board) {

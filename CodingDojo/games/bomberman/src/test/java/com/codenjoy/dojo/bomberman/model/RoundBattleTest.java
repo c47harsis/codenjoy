@@ -23,11 +23,9 @@ package com.codenjoy.dojo.bomberman.model;
  */
 
 import com.codenjoy.dojo.bomberman.services.GameSettings;
-import org.junit.Before;
 import org.junit.Test;
 
 import static com.codenjoy.dojo.bomberman.services.GameSettings.Keys.BOMB_POWER;
-import static com.codenjoy.dojo.bomberman.services.GameSettings.Keys.PLAYERS_PER_ROOM;
 import static com.codenjoy.dojo.services.Direction.DOWN;
 import static com.codenjoy.dojo.services.round.RoundSettings.Keys.*;
 import static org.junit.Assert.assertEquals;
@@ -40,22 +38,22 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     protected GameSettings settings() {
         return super.settings()
                 .bool(ROUNDS_ENABLED, true)
-                .integer(TIME_BEFORE_START, 5)
+                .integer(ROUNDS_TIME_BEFORE_START, 5)
                 .integer(ROUNDS_PER_MATCH, 3)
-                .integer(MIN_TICKS_FOR_WIN, 1)
-                .integer(MIN_TICKS_FOR_WIN, 1)
-                .integer(TIME_PER_ROUND, 10)
-                .integer(TIME_FOR_WINNER, 2);
+                .integer(ROUNDS_MIN_TICKS_FOR_WIN, 1)
+                .integer(ROUNDS_MIN_TICKS_FOR_WIN, 1)
+                .integer(ROUNDS_TIME, 10)
+                .integer(ROUNDS_TIME_FOR_WINNER, 2);
     }
 
     // во время старта игры, когда не прошло timeBeforeStart тиков,
     // все игроки неактивны (видно их трупики)
     @Test
     public void shouldAllPlayersOnBoardIsInactive_whenStart() {
-        settings.integer(PLAYERS_PER_ROOM, DEFAULT_COUNT);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, DEFAULT_COUNT);
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 0, 0,
                 1, 0,
                 1, 1);
@@ -206,12 +204,12 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     // то тот, которого вынесли появится в новом месте в виде трупика
     @Test
     public void shouldMoveToInactive_whenKillSomeone() {
-        settings.integer(PLAYERS_PER_ROOM, DEFAULT_COUNT)
-                .integer(TIME_BEFORE_START, 1); // TODO а что будет если тут 0 игра хоть начнется?
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, DEFAULT_COUNT)
+                .integer(ROUNDS_TIME_BEFORE_START, 1); // TODO а что будет если тут 0 игра хоть начнется?
 
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 0, 0,
                 1, 0,
                 1, 1);
@@ -284,7 +282,7 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
 
         tick();
 
-        dice(heroDice, 3, 4); // новые координаты для героя
+        dice(dice, 3, 4); // новые координаты для героя
         field.newGame(player(1)); // это сделоает сервер в ответ на isAlive = false
         resetHeroes();
 
@@ -305,11 +303,11 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     // если один игрок вынесет обоих, то должен получить за это очки
     @Test
     public void shouldGetWinRoundScores_whenKillAllEnemies() {
-        settings.integer(PLAYERS_PER_ROOM, DEFAULT_COUNT)
-                .integer(TIME_BEFORE_START, 1);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, DEFAULT_COUNT)
+                .integer(ROUNDS_TIME_BEFORE_START, 1);
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 1, 1, // первый игрок
                 0, 1, // второй
                 1, 0); // третий
@@ -389,11 +387,11 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     // - очки победителю положено вручить
     @Test
     public void shouldGetWinRoundScores_whenKillOneAndAnotherLeaveTheGame() {
-        settings.integer(PLAYERS_PER_ROOM, DEFAULT_COUNT)
-                .integer(TIME_BEFORE_START, 1);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, DEFAULT_COUNT)
+                .integer(ROUNDS_TIME_BEFORE_START, 1);
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 1, 1, // первый игрок, кто побежит
                 0, 1, // второй, жертва
                 4, 4); // третий, тот кто покинет комнату
@@ -542,11 +540,11 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     public void shouldGetWinRoundScores_whenKillOneEnemyAdvantage_whenRoundTimeout() {
         int count = 3;
 
-        settings.integer(PLAYERS_PER_ROOM, count)
-                .integer(TIME_BEFORE_START, 1);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, count)
+                .integer(ROUNDS_TIME_BEFORE_START, 1);
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 1, 1, // первый игрок
                 0, 2, // второй - его не накроет волной
                 1, 0); // третий - его накроет волной
@@ -639,7 +637,7 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
                 "listener(2) => []\n");
 
         // вот он последний тик раунда, тут все и случится
-        dice(heroDice,
+        dice(dice,
                 0, 0,
                 1, 0,
                 1, 1);
@@ -664,11 +662,11 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     public void shouldGetWinRoundScores_whenKillsAdvantage_whenRoundTimeout() {
         int count = 5;
 
-        settings.integer(PLAYERS_PER_ROOM, count)
-                .integer(TIME_BEFORE_START, 1);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, count)
+                .integer(ROUNDS_TIME_BEFORE_START, 1);
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 1, 1, // первый активный игрок - будет победителем
                 3, 3, // второй активный игрок - будет проигравшим
                 1, 0, // жертва первого
@@ -810,7 +808,7 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
                 "listener(4) => []\n");
 
         // вот он последний тик раунда, тут все и случится
-        dice(heroDice,
+        dice(dice,
                 0, 2,  // размещаем всех в свободные места
                 1, 2,
                 2, 2,
@@ -842,11 +840,11 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     public void shouldGetWinRoundScores_whenKillsAdvantagePlusOneBox_whenRoundTimeout() {
         int count = 6;
 
-        settings.integer(PLAYERS_PER_ROOM, count)
-                .integer(TIME_BEFORE_START, 1);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, count)
+                .integer(ROUNDS_TIME_BEFORE_START, 1);
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 1, 1, // первый активный игрок - будет проигравшим
                 3, 3, // второй активный игрок - будет победителем, потому как снесет еще корбку
                 1, 0, // жертва первого
@@ -1007,7 +1005,7 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
                 "listener(5) => []\n");
 
         // вот он последний тик раунда, тут все и случится
-        dice(heroDice,
+        dice(dice,
                 0, 1,  // на трупики нельзя!
                 1, 0,  // на трупики нельзя!
                 0, 2,  // теперь размещаем всех в свободные места
@@ -1076,12 +1074,12 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     }
 
     private void givenCaseWhenPlaceOfDeathOnMyWay() {
-        settings.integer(PLAYERS_PER_ROOM, DEFAULT_COUNT)
-                .integer(TIME_BEFORE_START, 1)
-                .integer(TIME_PER_ROUND, 20);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, DEFAULT_COUNT)
+                .integer(ROUNDS_TIME_BEFORE_START, 1)
+                .integer(ROUNDS_TIME, 20);
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 0, 0, // первый игрок
                 1, 0, // второй
                 2, 0); // третий
@@ -1298,16 +1296,15 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     public void shouldCleanEverything_whenCleanScores() {
         int count = 3;
 
-        settings.integer(PLAYERS_PER_ROOM, count)
-                .integer(TIME_BEFORE_START, 1)
-                .integer(TIME_PER_ROUND, 60); // до конца раунда целая минута
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, count)
+                .integer(ROUNDS_TIME_BEFORE_START, 1)
+                .integer(ROUNDS_TIME, 60); // до конца раунда целая минута
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 4, 4, // первый игрок
                 4, 3, // второй
-                3, 4, // третий
-                0, 0);  // для последующих начнем с левого нижнего угла
+                3, 4); // третий
 
         givenBoard(count);
 
@@ -1364,6 +1361,10 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
         assertEquals(true, hero(2).isActiveAndAlive());
 
         // делаем очистку очков
+        dice(dice,
+                0, 0, // первый игрок
+                0, 1, // второй
+                1, 0); // третий
         field.clearScore();
         resetHeroes();
 
@@ -1374,6 +1375,24 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
                 "listener(0) => [START_ROUND, [Round 1]]\n" +
                 "listener(1) => [START_ROUND, [Round 1]]\n" +
                 "listener(2) => [START_ROUND, [Round 1]]\n");
+
+        asrtBrd("     \n" +
+                "     \n" +
+                "     \n" +
+                "♥    \n" +
+                "☺♥   \n", game(0));
+
+        asrtBrd("     \n" +
+                "     \n" +
+                "     \n" +
+                "☺    \n" +
+                "♥♥   \n", game(1));
+
+        asrtBrd("     \n" +
+                "     \n" +
+                "     \n" +
+                "♥    \n" +
+                "♥☺   \n", game(2));
 
         // и очки обнулятся
         assertEquals(0, hero(0).scores());
@@ -1391,14 +1410,14 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     // - от имени жертвы я вижу свой трупик, мне пофиг уже что на карте происходит, главное где поставить памятник герою
     @Test
     public void shouldDrawMeatChopper_onPlaceOfDeath() {
-        settings.integer(PLAYERS_PER_ROOM, DEFAULT_COUNT)
-                .integer(TIME_BEFORE_START, 1)
-                .integer(TIME_PER_ROUND, 20);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, DEFAULT_COUNT)
+                .integer(ROUNDS_TIME_BEFORE_START, 1)
+                .integer(ROUNDS_TIME, 20);
         setup();
 
         MeatChopper chopper = meatChopperAt(1, 1);
 
-        dice(heroDice,
+        dice(dice,
                 0, 0, // первый игрок
                 1, 0, // второй
                 2, 0); // третий
@@ -1481,14 +1500,14 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     // приоритет прорисовки такой: 1) митчопер 2) бомба 3) останки
     @Test
     public void shouldDrawMeatChopper_onPlaceOfDeath_withBomb() {
-        settings.integer(PLAYERS_PER_ROOM, DEFAULT_COUNT)
-                .integer(TIME_BEFORE_START, 1)
-                .integer(TIME_PER_ROUND, 20);
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, DEFAULT_COUNT)
+                .integer(ROUNDS_TIME_BEFORE_START, 1)
+                .integer(ROUNDS_TIME, 20);
         setup();
 
         MeatChopper chopper = meatChopperAt(1, 1);
 
-        dice(heroDice,
+        dice(dice,
                 0, 0, // первый игрок
                 1, 0, // второй
                 2, 0); // третий
@@ -1617,14 +1636,14 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     @Test
     public void shouldPlaceOfDeath_isNotABarrierForBlast() {
 
-        settings.integer(PLAYERS_PER_ROOM, DEFAULT_COUNT)
-                .integer(TIME_BEFORE_START, 1)
+        settings.integer(ROUNDS_PLAYERS_PER_ROOM, DEFAULT_COUNT)
+                .integer(ROUNDS_TIME_BEFORE_START, 1)
                 .integer(BOMB_POWER, 3) // бомба с большим радиусом, чем обычно
-                .integer(TIME_PER_ROUND, 60)
-                .integer(TIME_FOR_WINNER, 15); // после победы я хочу еще чуть повисеть на уровне
+                .integer(ROUNDS_TIME, 60)
+                .integer(ROUNDS_TIME_FOR_WINNER, 15); // после победы я хочу еще чуть повисеть на уровне
         setup();
 
-        dice(heroDice,
+        dice(dice,
                 0, 0, // первый игрок
                 1, 0, // второй
                 2, 0); // третий
@@ -1801,8 +1820,8 @@ public class RoundBattleTest extends AbstractMultiplayerTest {
     // и в конечном счете начнется новый раунд
     @Test
     public void shouldWinScore_whenTimeoutBy_timeForWinner() {
-        settings.integer(TIME_PER_ROUND, 60)
-                .integer(TIME_FOR_WINNER, 15); // после победы я хочу еще чуть повисеть на уровне
+        settings.integer(ROUNDS_TIME, 60)
+                .integer(ROUNDS_TIME_FOR_WINNER, 15); // после победы я хочу еще чуть повисеть на уровне
 
         shouldPlaceOfDeath_isNotABarrierForBlast();
 

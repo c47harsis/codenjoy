@@ -42,11 +42,6 @@ import java.util.LinkedList;
 public abstract class FakeGameType extends AbstractGameType<Settings> {
 
     @Override
-    public SettingsImpl getSettings() {
-        return new FirstGameSettings();
-    }
-
-    @Override
     public PlayerScores getPlayerScores(Object score, Settings settings) {
         return new FakePlayerScores(score);
     }
@@ -62,14 +57,14 @@ public abstract class FakeGameType extends AbstractGameType<Settings> {
 
         @Override
         public BoardReader reader() {
-            return new BoardReader() {
+            return new BoardReader<Player>() {
                 @Override
                 public int size() {
                     return getBoardSize(settings).getValue();
                 }
 
                 @Override
-                public Iterable<? extends Point> elements() {
+                public Iterable<? extends Point> elements(Player player) {
                     return new LinkedList<>() {{
                         add(Field.this.hero());
                     }};

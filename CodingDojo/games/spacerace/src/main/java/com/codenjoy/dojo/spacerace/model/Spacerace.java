@@ -26,7 +26,6 @@ import com.codenjoy.dojo.services.BoardUtils;
 import com.codenjoy.dojo.services.Dice;
 import com.codenjoy.dojo.services.Point;
 import com.codenjoy.dojo.services.printer.BoardReader;
-import com.codenjoy.dojo.services.settings.SettingsReader;
 import com.codenjoy.dojo.spacerace.services.Events;
 import com.codenjoy.dojo.spacerace.services.GameSettings;
 
@@ -326,12 +325,17 @@ public class Spacerace implements Field {
     @Override
     public boolean isBarrier(int x, int y) {
         Point pt = pt(x, y);
-        return x > size - 1 || x < 0 || y < 0 || y > size - 1 || walls.contains(pt) || getHeroes().contains(pt);
+        return x > size - 1
+                || x < 0
+                || y < 0
+                || y > size - 1
+                || walls.contains(pt)
+                || getHeroes().contains(pt);
     }
 
     @Override
-    public Point getFreeRandom() {
-        return BoardUtils.getFreeRandom(
+    public Optional<Point> freeRandom() {
+        return BoardUtils.freeRandom(
                 () -> dice.next(size),
                 () -> dice.next(4),
                 pt -> isFree(pt));
@@ -399,7 +403,7 @@ public class Spacerace implements Field {
 
     @Override
     public BoardReader reader() {
-        return new BoardReader() {
+        return new BoardReader<Player>() {
             private int size = Spacerace.this.size;
 
             @Override
@@ -408,7 +412,7 @@ public class Spacerace implements Field {
             }
 
             @Override
-            public Iterable<? extends Point> elements() {
+            public Iterable<? extends Point> elements(Player player) {
                 return new LinkedList<>(){{
                     addAll(explosions);
                     addAll(walls);

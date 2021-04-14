@@ -39,12 +39,14 @@ import com.codenjoy.dojo.tetris.client.Board;
 import com.codenjoy.dojo.tetris.client.ai.AISolver;
 import com.codenjoy.dojo.tetris.model.*;
 import com.codenjoy.dojo.tetris.model.levels.LevelsFactory;
+import com.codenjoy.dojo.tetris.services.scores.CumulativeScores;
+import com.codenjoy.dojo.tetris.services.scores.MaxScores;
+import com.codenjoy.dojo.utils.LevelUtils;
 import org.json.JSONObject;
 
 import java.util.Arrays;
 
-import static com.codenjoy.dojo.tetris.services.GameSettings.Keys.GAME_LEVELS;
-import static com.codenjoy.dojo.tetris.services.GameSettings.Keys.GLASS_SIZE;
+import static com.codenjoy.dojo.tetris.services.GameSettings.Keys.*;
 
 public class GameRunner extends AbstractGameType<GameSettings> {
 
@@ -55,7 +57,12 @@ public class GameRunner extends AbstractGameType<GameSettings> {
 
     @Override
     public PlayerScores getPlayerScores(Object score, GameSettings settings) {
-        return new Scores(Integer.valueOf(score.toString()), settings);
+        Integer initial = Integer.valueOf(score.toString());
+        if (settings.bool(SCORE_MODE)) {
+            return new CumulativeScores(initial, settings);
+        } else {
+            return new MaxScores(initial, settings);
+        }
     }
 
     @Override
@@ -113,7 +120,7 @@ public class GameRunner extends AbstractGameType<GameSettings> {
     public PrinterFactory getPrinterFactory() {
         return PrinterFactory.get((BoardReader reader, Printer<String> printer, Player player) -> {
             String data = printer.print();
-            String board = data.replace("\n", "").replace(" ", ".");
+            String board = LevelUtils.clear(data).replace(" ", ".");
 
             Hero hero = player.getHero();
 

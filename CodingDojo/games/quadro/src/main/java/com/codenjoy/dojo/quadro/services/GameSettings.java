@@ -28,6 +28,9 @@ import com.codenjoy.dojo.quadro.model.LevelImpl;
 import com.codenjoy.dojo.services.settings.SettingsImpl;
 import com.codenjoy.dojo.services.settings.SettingsReader;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static com.codenjoy.dojo.quadro.services.GameSettings.Keys.*;
 
 public final class GameSettings extends SettingsImpl implements SettingsReader<GameSettings> {
@@ -51,21 +54,26 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
         }
     }
 
+    @Override
+    public List<Key> allKeys() {
+        return Arrays.asList(Keys.values());
+    }
+
     public GameSettings() {
         integer(WIN_SCORE, 10);
         integer(LOOSE_PENALTY, 1);
         integer(DRAW_SCORE, 3);
 
         multiline(LEVEL_MAP,
-                "         " +
-                "         " +
-                "         " +
-                "         " +
-                "         " +
-                "         " +
-                "         " +
-                "         " +
-                "         ");
+                "         \n" +
+                "         \n" +
+                "         \n" +
+                "         \n" +
+                "         \n" +
+                "         \n" +
+                "         \n" +
+                "         \n" +
+                "         \n");
     }
 
     public Level level() {

@@ -27,6 +27,9 @@ import com.codenjoy.dojo.services.settings.SettingsReader;
 import com.codenjoy.dojo.startandjump.model.Level;
 import com.codenjoy.dojo.startandjump.model.LevelImpl;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static com.codenjoy.dojo.startandjump.services.GameSettings.Keys.*;
 
 public class GameSettings extends SettingsImpl implements SettingsReader<GameSettings> {
@@ -49,31 +52,36 @@ public class GameSettings extends SettingsImpl implements SettingsReader<GameSet
         }
     }
 
+    @Override
+    public List<Key> allKeys() {
+        return Arrays.asList(Keys.values());
+    }
+
     public GameSettings() {
         integer(WIN_SCORE, 30);
         integer(LOOSE_PENALTY, 100);
 
         multiline(LEVEL_MAP,
-                "####################" +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                " =                  " +
-                "                    " +
-                "☺            ==  ===" +
-                " =        =         " +
-                " =  ==== = ==       " +
-                "####################");
+                "####################\n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                " =                  \n" +
+                "                    \n" +
+                "☺            ==  ===\n" +
+                " =        =         \n" +
+                " =  ==== = ==       \n" +
+                "####################\n");
     }
 
     public Level level() {

@@ -28,6 +28,9 @@ import com.codenjoy.dojo.football.model.LevelImpl;
 import com.codenjoy.dojo.services.settings.SettingsImpl;
 import com.codenjoy.dojo.services.settings.SettingsReader;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static com.codenjoy.dojo.football.services.GameSettings.Keys.*;
 
 public final class GameSettings extends SettingsImpl implements SettingsReader<GameSettings> {
@@ -51,6 +54,11 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
         }
     }
 
+    @Override
+    public List<Key> allKeys() {
+        return Arrays.asList(Keys.values());
+    }
+
     public GameSettings() {
         integer(NUMBER_OF_PLAYERS, 2);
         integer(IS_NEED_AI, 1);
@@ -58,38 +66,38 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
         integer(WIN_SCORE, 1);
 
         multiline(LEVEL_MAP,
-                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼" +
-                "☼☼☼☼☼☼☼☼☼☼☼☼☼┴┴┴┴┴┴┴☼☼☼☼☼☼☼☼☼☼☼☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼               ∙              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼                              ☼" +
-                "☼☼☼☼☼☼☼☼☼☼☼☼☼┬┬┬┬┬┬┬☼☼☼☼☼☼☼☼☼☼☼☼" +
-                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼");
+                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼☼☼┴┴┴┴┴┴┴☼☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼               ∙              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼                              ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼☼☼┬┬┬┬┬┬┬☼☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
     public Level level() {

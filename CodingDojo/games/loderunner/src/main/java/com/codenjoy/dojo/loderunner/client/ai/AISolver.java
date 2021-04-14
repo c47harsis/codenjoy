@@ -31,6 +31,7 @@ import com.codenjoy.dojo.services.Direction;
 import com.codenjoy.dojo.services.Point;
 import com.codenjoy.dojo.services.algs.DeikstraFindWay;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class AISolver implements Solver<Board> {
@@ -41,19 +42,19 @@ public class AISolver implements Solver<Board> {
         this.way = new DeikstraFindWay();
     }
 
-    public DeikstraFindWay.Possible possible(final Board board) {
+    public DeikstraFindWay.Possible possible(Board board) {
         return new DeikstraFindWay.Possible() {
             @Override
             public boolean possible(Point from, Direction where) {
                 if (where == Direction.UP && !board.isLadder(from)) return false;
 
                 Point under = Direction.DOWN.change(from);
-                if (where != Direction.DOWN &&
-                        !under.isOutOf(board.size()) &&
-                        !board.isWall(under) &&
-                        !board.isLadder(under) &&
-                        !board.isLadder(from) &&
-                        !board.isPipe(from)) return false;
+                if (where != Direction.DOWN
+                        && !under.isOutOf(board.size())
+                        && !board.isWall(under)
+                        && !board.isLadder(under)
+                        && !board.isLadder(from)
+                        && !board.isPipe(from)) return false;
 
                 return true;
             }
@@ -70,7 +71,7 @@ public class AISolver implements Solver<Board> {
     }
 
     @Override
-    public String get(final Board board) {
+    public String get(Board board) {
         if (board.isGameOver()) return "";
         List<Direction> result = getDirections(board);
         if (result.isEmpty()) return "";
@@ -80,7 +81,11 @@ public class AISolver implements Solver<Board> {
     public List<Direction> getDirections(Board board) {
         int size = board.size();
         Point from = board.getMe();
-        List<Point> to = board.get(Elements.YELLOW_GOLD,
+        if (from == null) {
+            return Arrays.asList();
+        }
+        List<Point> to = board.get(
+                Elements.YELLOW_GOLD,
                 Elements.GREEN_GOLD,
                 Elements.RED_GOLD);
         DeikstraFindWay.Possible map = possible(board);

@@ -24,17 +24,18 @@ package com.codenjoy.dojo.quake2d.model;
 
 import com.codenjoy.dojo.services.LengthToXY;
 import com.codenjoy.dojo.services.Point;
+import com.codenjoy.dojo.utils.LevelUtils;
 
 import java.util.LinkedList;
 import java.util.List;
 
 public class LevelImpl implements Level {
-    private final LengthToXY xy;
 
+    private LengthToXY xy;
     private String map;
 
     public LevelImpl(String map) {
-        this.map = map;
+        this.map = LevelUtils.clear(map);
         xy = new LengthToXY(getSize());
     }
 
@@ -79,7 +80,7 @@ public class LevelImpl implements Level {
     public List<Ability> getAbility() {
         List<Ability> result = new LinkedList<Ability>();
 
-        for (Point pt : getPointsOf(Elements.SUPER_ATTACK)) {
+        for (Point pt : getPointsOf(Elements.SUPER_WEAPON)) {
             result.add(new Ability(pt, Ability.Type.WEAPON));
         }
         for (Point pt : getPointsOf(Elements.SUPER_DEFENCE)) {

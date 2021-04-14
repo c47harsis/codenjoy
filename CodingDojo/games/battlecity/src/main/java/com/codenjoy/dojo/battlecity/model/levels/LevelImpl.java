@@ -23,6 +23,7 @@ package com.codenjoy.dojo.battlecity.model.levels;
  */
 
 
+import com.codenjoy.dojo.battlecity.model.Player;
 import com.codenjoy.dojo.battlecity.model.Tank;
 import com.codenjoy.dojo.battlecity.model.items.*;
 import com.codenjoy.dojo.services.Dice;
@@ -39,12 +40,12 @@ import static com.codenjoy.dojo.services.Direction.*;
 
 public class LevelImpl implements Level {
 
-    private final LengthToXY xy;
-    private final Dice dice;
-    private final String map;
+    private LengthToXY xy;
+    private Dice dice;
+    private String map;
 
     public LevelImpl(String map, Dice dice) {
-        this.map = map;
+        this.map = LevelUtils.clear(map);
         this.dice = dice;
         xy = new LengthToXY(size());
     }
@@ -107,19 +108,19 @@ public class LevelImpl implements Level {
     public List<Tank> getTanks() {
         return new LinkedList<>(){{
             addAll(LevelUtils.getObjects(xy, map,
-                    (pt, el) -> new Tank(pt, DOWN, dice),
+                    (pt, el) -> new Tank(pt, DOWN),
                     TANK_DOWN, OTHER_TANK_DOWN));
 
             addAll(LevelUtils.getObjects(xy, map,
-                    (pt, el) -> new Tank(pt, UP, dice),
+                    (pt, el) -> new Tank(pt, UP),
                     TANK_UP, OTHER_TANK_UP));
 
             addAll(LevelUtils.getObjects(xy, map,
-                    (pt, el) -> new Tank(pt, LEFT, dice),
+                    (pt, el) -> new Tank(pt, LEFT),
                     TANK_LEFT, OTHER_TANK_LEFT));
 
             addAll(LevelUtils.getObjects(xy, map,
-                    (pt, el) -> new Tank(pt, RIGHT, dice),
+                    (pt, el) -> new Tank(pt, RIGHT),
                     TANK_RIGHT, OTHER_TANK_RIGHT));
         }};
     }
@@ -133,14 +134,14 @@ public class LevelImpl implements Level {
 
     @Override
     public BoardReader reader() {
-        return new BoardReader() {
+        return new BoardReader<Player>() {
             @Override
             public int size() {
                 return LevelImpl.this.size();
             }
 
             @Override
-            public Iterable<? extends Point> elements() {
+            public Iterable<? extends Point> elements(Player player) {
                 return new LinkedList<>() {{
                     addAll(LevelImpl.this.getBorders());
                     addAll(LevelImpl.this.getWalls());

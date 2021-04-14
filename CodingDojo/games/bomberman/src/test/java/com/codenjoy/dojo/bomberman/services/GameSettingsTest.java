@@ -25,58 +25,32 @@ package com.codenjoy.dojo.bomberman.services;
 import com.codenjoy.dojo.bomberman.model.Elements;
 import com.codenjoy.dojo.bomberman.model.perks.PerkSettings;
 import com.codenjoy.dojo.bomberman.model.perks.PerksSettingsWrapper;
-import com.codenjoy.dojo.services.Dice;
-import com.codenjoy.dojo.services.settings.Settings;
 import com.codenjoy.dojo.utils.JsonUtils;
 import org.json.JSONObject;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.LinkedHashMap;
 
 import static org.junit.Assert.assertEquals;
 
-@RunWith(MockitoJUnitRunner.class)
 public class GameSettingsTest {
 
-    @Mock
-    private Dice dice;
-
-    @Mock
-    Settings settings;
-
     @Test
-    @Ignore("TODO: mock GameSettings properly")
-    public void shouldBombermanContainPerksSettings_whenCreated() {
+    public void shouldDefaultPerkSettings() {
         GameSettings settings = new GameSettings();
         PerksSettingsWrapper perksSettings = settings.perksSettings();
-        PerkSettings perkSettings = perksSettings.get(Elements.BOMB_IMMUNE);
 
-        assertPerkSettings(Elements.BOMB_BLAST_RADIUS_INCREASE, perkSettings, 2, 10);
-        assertPerkSettings(Elements.BOMB_COUNT_INCREASE, perkSettings, 3, 10);
-        assertPerkSettings(Elements.BOMB_IMMUNE, perkSettings, 0, 10);
-        assertPerkSettings(Elements.BOMB_REMOTE_CONTROL, perkSettings, 0, 3);
+        assertEquals("{BOMB_BLAST_RADIUS_INCREASE=PerkSettings{value=2, timeout=30}, " +
+                        "BOMB_COUNT_INCREASE=PerkSettings{value=4, timeout=30}, " +
+                        "BOMB_IMMUNE=PerkSettings{value=0, timeout=30}, " +
+                        "BOMB_REMOTE_CONTROL=PerkSettings{value=3, timeout=1}}",
+                allPerkSettings(perksSettings).toString());
     }
 
-    private boolean assertPerkSettings(Elements perk, PerkSettings perkSettings, int value, int timeout) {
-        String message = "";
-        String defaultValueErrorPattern = "%s expected default value = %d, but found it = %d \n";
-        String defaultTimeoutErrorPattern = "%s expected default timeout = %d, but found it = %d \n";
-
-        if(perkSettings.value() != value) {
-            message += String.format(defaultValueErrorPattern, perk.name(), value, perkSettings.value());
-        }
-
-        if(perkSettings.timeout() != timeout) {
-            message += String.format(defaultTimeoutErrorPattern, perk.name(), timeout, perkSettings.timeout());
-        }
-
-        if(message.isEmpty()) {
-            return true;
-        } else {
-            throw  new AssertionError(message);
-        }
+    public LinkedHashMap<String, PerkSettings> allPerkSettings(PerksSettingsWrapper perksSettings) {
+        return new LinkedHashMap<>() {{
+            Elements.perks().forEach(it -> put(it.name(), perksSettings.get(it)));
+        }};
     }
 
     @Test
@@ -97,33 +71,39 @@ public class GameSettingsTest {
                 "  'KILL_OTHER_HERO_SCORE':20,\n" +
                 "  'KILL_WALL_SCORE':1,\n" +
                 "  'MEAT_CHOPPERS_COUNT':5,\n" +
-                "  'MIN_TICKS_FOR_WIN':1,\n" +
-                "  'MULTIPLE':false,\n" +
                 "  'PERK_BOMB_BLAST_RADIUS_INC':2,\n" +
                 "  'PERK_BOMB_COUNT_INC':4,\n" +
                 "  'PERK_DROP_RATIO':20,\n" +
                 "  'PERK_PICK_TIMEOUT':30,\n" +
-                "  'PLAYERS_PER_ROOM':5,\n" +
                 "  'REMOTE_CONTROL_COUNT':3,\n" +
                 "  'ROUNDS_ENABLED':true,\n" +
+                "  'ROUNDS_MIN_TICKS_FOR_WIN':1,\n" +
                 "  'ROUNDS_PER_MATCH':1,\n" +
+                "  'ROUNDS_PLAYERS_PER_ROOM':5,\n" +
+                "  'ROUNDS_TIME':200,\n" +
+                "  'ROUNDS_TIME_BEFORE_START':5,\n" +
+                "  'ROUNDS_TIME_FOR_WINNER':1,\n" +
+                "  'SEMIFINAL_ENABLED':false,\n" +
+                "  'SEMIFINAL_LIMIT':50,\n" +
+                "  'SEMIFINAL_PERCENTAGE':true,\n" +
+                "  'SEMIFINAL_RESET_BOARD':true,\n" +
+                "  'SEMIFINAL_SHUFFLE_BOARD':true,\n" +
+                "  'SEMIFINAL_TIMEOUT':900,\n" +
                 "  'TIMEOUT_BOMB_BLAST_RADIUS_INC':30,\n" +
                 "  'TIMEOUT_BOMB_COUNT_INC':30,\n" +
                 "  'TIMEOUT_BOMB_IMMUNE':30,\n" +
-                "  'TIME_BEFORE_START':5,\n" +
-                "  'TIME_FOR_WINNER':1,\n" +
-                "  'TIME_PER_ROUND':200,\n" +
                 "  'WIN_ROUND_SCORE':30\n" +
                 "}", JsonUtils.prettyPrint(settings.asJson()));
 
         // when
         settings.update(new JSONObject("{\n" +
                 "  'DIE_PENALTY':12,\n" +
-                "  'MULTIPLE':true,\n" +
                 "  'PERK_BOMB_BLAST_RADIUS_INC':4,\n" +
                 "  'PERK_DROP_RATIO':23,\n" +
                 "  'ROUNDS_ENABLED':false,\n" +
-                "  'TIME_BEFORE_START':10,\n" +
+                "  'ROUNDS_TIME_BEFORE_START':10,\n" +
+                "  'SEMIFINAL_LIMIT':150,\n" +
+                "  'SEMIFINAL_PERCENTAGE':false,\n" +
                 "  'TIMEOUT_BOMB_COUNT_INC':12,\n" +
                 "}"));
 
@@ -141,22 +121,27 @@ public class GameSettingsTest {
                 "  'KILL_OTHER_HERO_SCORE':20,\n" +
                 "  'KILL_WALL_SCORE':1,\n" +
                 "  'MEAT_CHOPPERS_COUNT':5,\n" +
-                "  'MIN_TICKS_FOR_WIN':1,\n" +
-                "  'MULTIPLE':true,\n" +
                 "  'PERK_BOMB_BLAST_RADIUS_INC':4,\n" +
                 "  'PERK_BOMB_COUNT_INC':4,\n" +
                 "  'PERK_DROP_RATIO':23,\n" +
                 "  'PERK_PICK_TIMEOUT':30,\n" +
-                "  'PLAYERS_PER_ROOM':5,\n" +
                 "  'REMOTE_CONTROL_COUNT':3,\n" +
                 "  'ROUNDS_ENABLED':false,\n" +
+                "  'ROUNDS_MIN_TICKS_FOR_WIN':1,\n" +
                 "  'ROUNDS_PER_MATCH':1,\n" +
+                "  'ROUNDS_PLAYERS_PER_ROOM':5,\n" +
+                "  'ROUNDS_TIME':200,\n" +
+                "  'ROUNDS_TIME_BEFORE_START':10,\n" +
+                "  'ROUNDS_TIME_FOR_WINNER':1,\n" +
+                "  'SEMIFINAL_ENABLED':false,\n" +
+                "  'SEMIFINAL_LIMIT':150,\n" +
+                "  'SEMIFINAL_PERCENTAGE':false,\n" +
+                "  'SEMIFINAL_RESET_BOARD':true,\n" +
+                "  'SEMIFINAL_SHUFFLE_BOARD':true,\n" +
+                "  'SEMIFINAL_TIMEOUT':900,\n" +
                 "  'TIMEOUT_BOMB_BLAST_RADIUS_INC':30,\n" +
                 "  'TIMEOUT_BOMB_COUNT_INC':12,\n" +
                 "  'TIMEOUT_BOMB_IMMUNE':30,\n" +
-                "  'TIME_BEFORE_START':10,\n" +
-                "  'TIME_FOR_WINNER':1,\n" +
-                "  'TIME_PER_ROUND':200,\n" +
                 "  'WIN_ROUND_SCORE':30\n" +
                 "}", JsonUtils.prettyPrint(settings.asJson()));
 
@@ -177,22 +162,27 @@ public class GameSettingsTest {
                 "  'KILL_OTHER_HERO_SCORE':20,\n" +
                 "  'KILL_WALL_SCORE':1,\n" +
                 "  'MEAT_CHOPPERS_COUNT':5,\n" +
-                "  'MIN_TICKS_FOR_WIN':1,\n" +
-                "  'MULTIPLE':true,\n" +
                 "  'PERK_BOMB_BLAST_RADIUS_INC':4,\n" +
                 "  'PERK_BOMB_COUNT_INC':4,\n" +
                 "  'PERK_DROP_RATIO':23,\n" +
                 "  'PERK_PICK_TIMEOUT':30,\n" +
-                "  'PLAYERS_PER_ROOM':5,\n" +
                 "  'REMOTE_CONTROL_COUNT':3,\n" +
                 "  'ROUNDS_ENABLED':false,\n" +
+                "  'ROUNDS_MIN_TICKS_FOR_WIN':1,\n" +
                 "  'ROUNDS_PER_MATCH':1,\n" +
+                "  'ROUNDS_PLAYERS_PER_ROOM':5,\n" +
+                "  'ROUNDS_TIME':200,\n" +
+                "  'ROUNDS_TIME_BEFORE_START':10,\n" +
+                "  'ROUNDS_TIME_FOR_WINNER':1,\n" +
+                "  'SEMIFINAL_ENABLED':false,\n" +
+                "  'SEMIFINAL_LIMIT':150,\n" +
+                "  'SEMIFINAL_PERCENTAGE':false,\n" +
+                "  'SEMIFINAL_RESET_BOARD':true,\n" +
+                "  'SEMIFINAL_SHUFFLE_BOARD':true,\n" +
+                "  'SEMIFINAL_TIMEOUT':900,\n" +
                 "  'TIMEOUT_BOMB_BLAST_RADIUS_INC':30,\n" +
                 "  'TIMEOUT_BOMB_COUNT_INC':12,\n" +
                 "  'TIMEOUT_BOMB_IMMUNE':30,\n" +
-                "  'TIME_BEFORE_START':10,\n" +
-                "  'TIME_FOR_WINNER':1,\n" +
-                "  'TIME_PER_ROUND':200,\n" +
                 "  'WIN_ROUND_SCORE':30\n" +
                 "}", JsonUtils.prettyPrint(settings.asJson()));
 

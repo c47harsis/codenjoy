@@ -73,25 +73,24 @@ public class AbstractGameTest {
 
         withWalls(walls);
 
-        initHero();
-        givenBoard(SIZE);
+        givenBoard(SIZE, 0, 0);
     }
 
-    protected void initHero() {
-        dice(dice, 0, 0);
+    protected void initHero(int x, int y) {
+        dice(dice, x, y);
         Level level = settings.getLevel();
-        Hero hero = new Hero(level, dice);
-        when(settings.getHero(any(Level.class), any(Dice.class))).thenReturn(hero);
+        Hero hero = new Hero(level);
+        when(settings.getHero(any(Level.class))).thenReturn(hero);
         this.hero = hero;
     }
 
-    protected void givenBoard(int size) {
+    protected void givenBoard(int size, int x, int y) {
         settings.integer(BOARD_SIZE, size);
-
         field = new Bomberman(dice, settings);
-        player = new Player(listener, dice, settings);
+        player = new Player(listener, settings);
         game = new Single(player, printer);
         game.on(field);
+        initHero(x, y); // hero позиция
         game.newGame();
         hero = (Hero)game.getJoystick();
     }
@@ -144,8 +143,7 @@ public class AbstractGameTest {
 
     protected void givenBoardWithWalls(int size) {
         withWalls(new OriginalWalls(v(size)));
-        dice(dice, 1, 1);  // hero в левом нижнем углу
-        givenBoard(size);
+        givenBoard(size, 1, 1); // hero в левом нижнем углу с учетом стен
     }
 
     protected void givenBoardWithDestroyWalls() {
@@ -154,8 +152,7 @@ public class AbstractGameTest {
 
     protected void givenBoardWithDestroyWalls(int size) {
         withWalls(new MeatChoppers(new DestroyWalls(new OriginalWalls(v(size))), v(0), dice));
-        dice(dice, 1, 1);  // hero в левом нижнем углу
-        givenBoard(size);
+        givenBoard(size, 1, 1); // hero в левом нижнем углу с учетом стен
     }
 
     protected void withWalls(Walls walls) {
@@ -168,8 +165,7 @@ public class AbstractGameTest {
 
     protected void givenBoardWithOriginalWalls(int size) {
         withWalls(new OriginalWalls(v(size)));
-        dice(dice, 1, 1);  // hero в левом нижнем углу
-        givenBoard(size);
+        givenBoard(size, 1, 1); // hero в левом нижнем углу с учетом стен
     }
 
     protected void bombsPower(int power) {
@@ -199,6 +195,7 @@ public class AbstractGameTest {
     }
 
     protected void dice(Dice dice, int... values) {
+        reset(dice);
         OngoingStubbing<Integer> when = when(dice.next(anyInt()));
         for (int value : values) {
             when = when.thenReturn(value);
@@ -212,8 +209,7 @@ public class AbstractGameTest {
         MeatChoppers walls = new MeatChoppers(new OriginalWalls(v(size)), v(1), chopperDice);
         withWalls(walls);
 
-        dice(dice, 1, 1);  // hero в левом нижнем углу
-        givenBoard(size);
+        givenBoard(size, 1, 1); // hero в левом нижнем углу с учетом стен
 
         walls.init(field);
         walls.regenerate();

@@ -31,6 +31,7 @@ import com.codenjoy.dojo.services.QDirection;
 import com.codenjoy.dojo.services.printer.BoardReader;
 import com.codenjoy.dojo.services.settings.Parameter;
 
+import javax.swing.text.html.parser.Element;
 import java.util.*;
 
 import static com.codenjoy.dojo.minesweeper.services.GameSettings.Keys.*;
@@ -200,14 +201,14 @@ public class Minesweeper implements Field {
     public int minesNear(Point pt) {
         Integer count = walkAt.get(pt);
         if (count == null) {
-            return -1;
+            return Elements.NONE.value;
         }
         return count;
     }
 
     @Override
     public BoardReader reader() {
-        return new BoardReader() {
+        return new BoardReader<Player>() {
             private int size = Minesweeper.this.size();
 
             @Override
@@ -216,7 +217,7 @@ public class Minesweeper implements Field {
             }
 
             @Override
-            public Iterable<? extends Point> elements() {
+            public Iterable<? extends Point> elements(Player player) {
                 return new LinkedList<>() {{
                     add(Minesweeper.this.sapper());
                     addAll(Minesweeper.this.getMines());

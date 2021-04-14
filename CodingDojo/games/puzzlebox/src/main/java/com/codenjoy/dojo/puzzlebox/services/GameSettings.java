@@ -28,6 +28,9 @@ import com.codenjoy.dojo.puzzlebox.model.LevelImpl;
 import com.codenjoy.dojo.services.settings.SettingsImpl;
 import com.codenjoy.dojo.services.settings.SettingsReader;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static com.codenjoy.dojo.puzzlebox.services.GameSettings.Keys.*;
 
 public final class GameSettings extends SettingsImpl implements SettingsReader<GameSettings> {
@@ -50,41 +53,46 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
         }
     }
 
+    @Override
+    public List<Key> allKeys() {
+        return Arrays.asList(Keys.values());
+    }
+
     public GameSettings() {
         integer(WIN_SCORE, 100);
         integer(FILL_SCORE, 1);
 
         multiline(LEVEL_MAP,
-                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼" +
-                "☼               #            ☼" +
-                "☼     ☼☼☼               0   #☼" +
-                "☼     ☼                   ☼☼☼☼" +
-                "☼            0               ☼" +
-                "☼0           ☼☼☼☼☼☼☼☼        ☼" +
-                "☼            ☼0    0☼        ☼" +
-                "☼       #                    ☼" +
-                "☼            ☼0    0☼        ☼" +
-                "☼            ☼☼☼  ☼☼☼☼       ☼" +
-                "☼     ☼        ☼  ☼☼☼#☼      ☼" +
-                "☼     ☼☼☼                    ☼" +
-                "☼              ☼ #           ☼" +
-                "☼       #      ☼        #   ☼☼" +
-                "☼              ☼#            ☼" +
-                "☼              0       #☼    ☼" +
-                "☼               ☼☼☼     ☼    ☼" +
-                "☼                       ☼    ☼" +
-                "☼                           ☼☼" +
-                "☼              0             ☼" +
-                "☼              ☼☼            ☼" +
-                "☼   ☼           #            ☼" +
-                "☼                   ☼ ☼      ☼" +
-                "☼                   ☼ ☼      ☼" +
-                "☼    0        ☼     ☼0☼      ☼" +
-                "☼☼☼☼        ☼☼☼      ☼       ☼" +
-                "☼#                           ☼" +
-                "☼                           0☼" +
-                "☼0  ☼  0                   0#☼" +
-                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼");
+                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼               #            ☼\n" +
+                "☼     ☼☼☼               0   #☼\n" +
+                "☼     ☼                   ☼☼☼☼\n" +
+                "☼            0               ☼\n" +
+                "☼0           ☼☼☼☼☼☼☼☼        ☼\n" +
+                "☼            ☼0    0☼        ☼\n" +
+                "☼       #                    ☼\n" +
+                "☼            ☼0    0☼        ☼\n" +
+                "☼            ☼☼☼  ☼☼☼☼       ☼\n" +
+                "☼     ☼        ☼  ☼☼☼#☼      ☼\n" +
+                "☼     ☼☼☼                    ☼\n" +
+                "☼              ☼ #           ☼\n" +
+                "☼       #      ☼        #   ☼☼\n" +
+                "☼              ☼#            ☼\n" +
+                "☼              0       #☼    ☼\n" +
+                "☼               ☼☼☼     ☼    ☼\n" +
+                "☼                       ☼    ☼\n" +
+                "☼                           ☼☼\n" +
+                "☼              0             ☼\n" +
+                "☼              ☼☼            ☼\n" +
+                "☼   ☼           #            ☼\n" +
+                "☼                   ☼ ☼      ☼\n" +
+                "☼                   ☼ ☼      ☼\n" +
+                "☼    0        ☼     ☼0☼      ☼\n" +
+                "☼☼☼☼        ☼☼☼      ☼       ☼\n" +
+                "☼#                           ☼\n" +
+                "☼                           0☼\n" +
+                "☼0  ☼  0                   0#☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
     public Level level() {

@@ -27,7 +27,6 @@ import com.codenjoy.dojo.services.Dice;
 import com.codenjoy.dojo.services.EventListener;
 import com.codenjoy.dojo.services.printer.PrinterFactory;
 import com.codenjoy.dojo.services.printer.PrinterFactoryImpl;
-import com.codenjoy.dojo.services.round.RoundImpl;
 import com.codenjoy.dojo.snakebattle.model.board.SnakeBoard;
 import com.codenjoy.dojo.snakebattle.model.hero.Hero;
 import com.codenjoy.dojo.snakebattle.model.level.LevelImpl;
@@ -38,6 +37,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.exceptions.verification.NeverWantedButInvoked;
+import org.mockito.stubbing.OngoingStubbing;
 
 import static com.codenjoy.dojo.services.round.RoundSettings.Keys.*;
 import static org.junit.Assert.assertEquals;
@@ -68,7 +68,14 @@ public class MultiplayerTest {
         dice = mock(Dice.class);
 
         settings = new TestGameSettings()
-                .integer(MIN_TICKS_FOR_WIN, 1);
+                .integer(ROUNDS_MIN_TICKS_FOR_WIN, 1);
+    }
+
+    private void dice(int... values) {
+        OngoingStubbing<Integer> when = when(dice.next(anyInt()));
+        for (int value : values) {
+            when = when.thenReturn(value);
+        }
     }
 
     private void givenFl(String board) {
@@ -834,6 +841,7 @@ public class MultiplayerTest {
         game.tick();
         game.tick();
 
+        verifyEvents(heroEvents, "[FURY]");
         verifyEvents(enemyEvents, "[APPLE, APPLE]");
 
         hero.down();
@@ -1080,7 +1088,7 @@ public class MultiplayerTest {
     // змейка не стартует сразу если стоит таймер
     @Test
     public void shouldWaitTillTimer_thenStart() {
-        settings.integer(TIME_BEFORE_START, 4);
+        settings.integer(ROUNDS_TIME_BEFORE_START, 4);
 
         givenFl("☼☼☼☼☼☼☼" +
                 "☼     ☼" +
@@ -1153,7 +1161,7 @@ public class MultiplayerTest {
     // если одна змейка погибает, стартует новый раунд
     @Test
     public void shouldStartNewGame_whenGameOver() {
-        settings.integer(TIME_BEFORE_START, 1)
+        settings.integer(ROUNDS_TIME_BEFORE_START, 1)
                 .integer(ROUNDS_PER_MATCH, 3);
 
         givenFl("☼☼☼☼☼☼☼☼" +
@@ -1434,6 +1442,8 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼☼");
 
         game.tick();
+        verifyEvents(enemyEvents, "[FURY]");
+
         game.tick();
 
         verifyEvents(heroEvents, "[DIE]");
@@ -1513,6 +1523,8 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼☼");
 
         game.tick();
+        verifyEvents(enemyEvents, "[FURY]");
+
         game.tick();
 
         verifyEvents(heroEvents, "[DIE]");
@@ -1590,6 +1602,8 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼☼");
 
         game.tick();
+
+        verifyEvents(enemyEvents, "[FURY]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -1694,6 +1708,8 @@ public class MultiplayerTest {
 
         game.tick();
 
+        verifyEvents(enemyEvents, "[FURY]");
+
         assertH("☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼╔══════╗☼\n" +
                 "☼║╔═══╕ ║☼\n" +
@@ -1786,6 +1802,8 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼☼");
 
         game.tick();
+        verifyEvents(heroEvents, "[FLYING]");
+
         hero.up();
         game.tick();
         game.tick();
@@ -2112,7 +2130,7 @@ public class MultiplayerTest {
         game.tick();
 
         verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[5], WIN]");
+        verifyEvents(enemyEvents, "[EAT[5], FURY, WIN]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼┌─ö   ☼" +
@@ -2172,7 +2190,7 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[EAT[5], WIN]");
+        verifyEvents(heroEvents, "[EAT[5], FURY, WIN]");
         verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼☼" +
@@ -2399,7 +2417,7 @@ public class MultiplayerTest {
                 "☼▼     ☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        assertTrue(game.getStones().isEmpty());
+        assertEquals("[]", game.getStones().toString());
         verifyNoMoreInteractions(heroEvents);
         verifyNoMoreInteractions(enemyEvents);
     }
@@ -2459,7 +2477,7 @@ public class MultiplayerTest {
                 "☼˅     ☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        assertTrue(game.getStones().isEmpty());
+        assertEquals("[]", game.getStones().toString());
         verifyNoMoreInteractions(heroEvents);
         verifyNoMoreInteractions(enemyEvents);
     }
@@ -2479,6 +2497,8 @@ public class MultiplayerTest {
         enemy.right();
         hero.right();
         game.tick();
+
+        verifyEvents(enemyEvents, "[FURY]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -2822,7 +2842,7 @@ public class MultiplayerTest {
     // если тиков для победы недостаточно, то WIN ты не получишь
     @Test
     public void shouldNoWin_whenIsNotEnoughTicksForWin() {
-        settings.integer(MIN_TICKS_FOR_WIN, 10);
+        settings.integer(ROUNDS_MIN_TICKS_FOR_WIN, 10);
 
         givenFl("☼☼☼☼☼☼☼☼" +
                 "☼┌─┐   ☼" +

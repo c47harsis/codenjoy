@@ -36,13 +36,18 @@ public class AITank extends Tank {
 
     public static final int MAX = 10;
     private final int ticksStandByRiver = 5;
+
+    private Dice dice;
     public boolean dontShoot = false;
     private int act;
     private int count;
 
     public AITank(Point pt, Direction direction, Dice dice) {
-        super(pt, direction, dice);
+        super(pt, direction);
+        this.dice = dice;
         this.count = 0;
+        setActive(true);
+        setAlive(true);
     }
 
     @Override
@@ -78,6 +83,11 @@ public class AITank extends Tank {
         super.move();
     }
 
+    @Override
+    public void die() {
+        setAlive(false);
+    }
+
     private void shootIfReady() {
         if (dontShoot) {
             return;
@@ -90,7 +100,7 @@ public class AITank extends Tank {
 
     @Override
     public Elements state(Player player, Object... alsoAtPoint) {
-        Elements tree = player.getHero().treeState(alsoAtPoint);
+        Elements tree = player.getHero().treeState(this, alsoAtPoint);
         if (tree != null) {
             return tree;
         }

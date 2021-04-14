@@ -28,6 +28,9 @@ import com.codenjoy.dojo.quake2d.model.LevelImpl;
 import com.codenjoy.dojo.services.settings.SettingsImpl;
 import com.codenjoy.dojo.services.settings.SettingsReader;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static com.codenjoy.dojo.quake2d.services.GameSettings.Keys.*;
 
 public final class GameSettings extends SettingsImpl implements SettingsReader<GameSettings> {
@@ -50,41 +53,46 @@ public final class GameSettings extends SettingsImpl implements SettingsReader<G
         }
     }
 
+    @Override
+    public List<Key> allKeys() {
+        return Arrays.asList(Keys.values());
+    }
+
     public GameSettings() {
         integer(KILL_SCORE, 30);
         integer(INJURE_SCORE, 100);
 
         multiline(LEVEL_MAP,
-                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼" +
-                "☼                            ☼" +
-                "☼                            ☼" +
-                "☼                            ☼" +
-                "☼                  ☼☼☼☼      ☼" +
-                "☼                  ☼☼☼☼      ☼" +
-                "☼    ☼☼☼☼          ☼☼☼☼      ☼" +
-                "☼    ☼☼☼☼          ☼☼☼☼      ☼" +
-                "☼    ☼☼☼☼                    ☼" +
-                "☼    ☼☼☼☼                    ☼" +
-                "☼                            ☼" +
-                "☼                            ☼" +
-                "☼           ☼☼☼☼             ☼" +
-                "☼           ☼☼☼☼             ☼" +
-                "☼           ☼☼☼☼             ☼" +
-                "☼           ☼☼☼☼             ☼" +
-                "☼                            ☼" +
-                "☼                            ☼" +
-                "☼                   ☼☼☼☼     ☼" +
-                "☼                   ☼☼☼☼     ☼" +
-                "☼    ☼☼☼☼                    ☼" +
-                "☼    ☼☼☼☼                    ☼" +
-                "☼    ☼☼☼☼                    ☼" +
-                "☼    ☼☼☼☼                    ☼" +
-                "☼                ☼☼☼☼        ☼" +
-                "☼                ☼☼☼☼        ☼" +
-                "☼                ☼☼☼☼        ☼" +
-                "☼       ☺        ☼☼☼☼        ☼" +
-                "☼                            ☼" +
-                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼");
+                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼                            ☼\n" +
+                "☼                            ☼\n" +
+                "☼                            ☼\n" +
+                "☼                  ☼☼☼☼      ☼\n" +
+                "☼                  ☼☼☼☼      ☼\n" +
+                "☼    ☼☼☼☼          ☼☼☼☼      ☼\n" +
+                "☼    ☼☼☼☼          ☼☼☼☼      ☼\n" +
+                "☼    ☼☼☼☼                    ☼\n" +
+                "☼    ☼☼☼☼                    ☼\n" +
+                "☼                            ☼\n" +
+                "☼                            ☼\n" +
+                "☼           ☼☼☼☼             ☼\n" +
+                "☼           ☼☼☼☼             ☼\n" +
+                "☼           ☼☼☼☼             ☼\n" +
+                "☼           ☼☼☼☼             ☼\n" +
+                "☼                            ☼\n" +
+                "☼                            ☼\n" +
+                "☼                   ☼☼☼☼     ☼\n" +
+                "☼                   ☼☼☼☼     ☼\n" +
+                "☼    ☼☼☼☼                    ☼\n" +
+                "☼    ☼☼☼☼                    ☼\n" +
+                "☼    ☼☼☼☼                    ☼\n" +
+                "☼    ☼☼☼☼                    ☼\n" +
+                "☼                ☼☼☼☼        ☼\n" +
+                "☼                ☼☼☼☼        ☼\n" +
+                "☼                ☼☼☼☼        ☼\n" +
+                "☼       ☺        ☼☼☼☼        ☼\n" +
+                "☼                            ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
     public Level level() {

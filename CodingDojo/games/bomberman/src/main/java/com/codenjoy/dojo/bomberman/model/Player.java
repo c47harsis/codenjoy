@@ -23,34 +23,39 @@ package com.codenjoy.dojo.bomberman.model;
  */
 
 
-import com.codenjoy.dojo.bomberman.services.Events;
 import com.codenjoy.dojo.bomberman.services.GameSettings;
-import com.codenjoy.dojo.services.Dice;
+import com.codenjoy.dojo.bomberman.services.Scores;
 import com.codenjoy.dojo.services.EventListener;
-import com.codenjoy.dojo.services.Game;
+import com.codenjoy.dojo.services.Point;
 import com.codenjoy.dojo.services.round.RoundGamePlayer;
+
+import java.util.Optional;
 
 public class Player extends RoundGamePlayer<Hero, Field> {
 
-    private Dice dice;
-
-    public Player(EventListener listener, Dice dice, GameSettings settings) {
+    public Player(EventListener listener, GameSettings settings) {
         super(listener, settings);
-        this.dice = dice;
     }
 
     @Override
     public Hero getHero() {
-        return (Hero)hero;
+        return hero;
     }
 
-    public void newHero(Field board) {
+    public void newHero(Field field) {
         if (hero != null) {
             hero.setPlayer(null);
+            hero = null;
         }
-        hero = settings().getHero(settings().getLevel(), dice);
+        Optional<Point> pt = field.freeRandom();
+        if (pt.isEmpty()) {
+            // TODO вот тут надо как-то сообщить плееру, борде и самому серверу, что нет место для героя
+            throw new RuntimeException("Not enough space for Hero");
+        }
+        hero = settings().getHero(settings().getLevel());
+        hero.move(pt.get());
         hero.setPlayer(this);
-        hero.init(board);
+        hero.init(field);
 
         if (!roundsEnabled()) {
             hero.setActive(true);
@@ -59,28 +64,8 @@ public class Player extends RoundGamePlayer<Hero, Field> {
 
     @Override
     public void event(Object event) {
-        getHero().addScore(getScoreFor(event));
+        getHero().addScore(Scores.scoreFor(settings(), event));
         super.event(event);
-    }
-
-    private int getScoreFor(Object event) {
-        if (event == Events.KILL_DESTROY_WALL) {
-            return settings().killWallScore().getValue();
-        }
-
-        if (event == Events.KILL_MEAT_CHOPPER) {
-            return settings().killMeatChopperScore().getValue();
-        }
-
-        if (event == Events.KILL_OTHER_HERO) {
-            return settings().killOtherHeroScore().getValue();
-        }
-
-        if (event == Events.CATCH_PERK) {
-            return settings().catchPerkScore().getValue();
-        }
-
-        return 0;
     }
 
     private GameSettings settings() {

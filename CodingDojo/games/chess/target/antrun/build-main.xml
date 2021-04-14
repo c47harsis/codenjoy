@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="maven-antrun-" default="main">
+  <target name="main">
+    <zip basedir="." excludes="src/main/java/com/codenjoy/dojo/chess/client/ai/*,                                                src/test/java/com/codenjoy/dojo/chess/client/ai/*,                                                **/target/**" destfile="src/main/webapp/resources/user/chess-servers.zip" update="true" includes="src/main/java/com/codenjoy/dojo/chess/client/*.java,                                                src/main/java/com/codenjoy/dojo/chess/model/elements/*.java,                                                src/main/java/com/codenjoy/dojo/chess/model/Elements.java,                                                src/test/java/com/codenjoy/dojo/chess/client/*.java,                                                README.*,                                                src/license/**,                                                **/pom.xml" />
+    <zip basedir="." excludes="src/main/java/**,                                                 src/main/webapp/**,                                                 src/main/resources/**,                                                 **/target/**" destfile="src/main/webapp/resources/user/chess-servers.zip" update="true" includes="src/main/**" />
+    <echo file="./target/stuff/logback.xml" append="false">&lt;configuration>&lt;/configuration></echo>
+    <zip destfile="src/main/webapp/resources/user/chess-servers.zip" update="true">
+      <zipfileset prefix="src/main/resources" dir="./target/stuff/" />
+    </zip>
+    <copy file="src/main/webapp/resources/user/chess-servers.zip" todir="target/classes/resources/user" />
+  </target>
+</project>

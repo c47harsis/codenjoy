@@ -24,9 +24,11 @@ package com.codenjoy.dojo.sokoban.services;
 
 import com.codenjoy.dojo.services.settings.SettingsImpl;
 import com.codenjoy.dojo.services.settings.SettingsReader;
-import com.codenjoy.dojo.sokoban.helper.TextIOHelper;
-import com.codenjoy.dojo.sokoban.model.items.Level;
-import com.codenjoy.dojo.sokoban.model.itemsImpl.LevelImpl;
+import com.codenjoy.dojo.sokoban.model.levels.Level;
+import com.codenjoy.dojo.sokoban.model.levels.LevelImpl;
+
+import java.util.Arrays;
+import java.util.List;
 
 import static com.codenjoy.dojo.sokoban.services.GameSettings.Keys.*;
 
@@ -50,6 +52,11 @@ public class GameSettings extends SettingsImpl implements SettingsReader<GameSet
         }
     }
 
+    @Override
+    public List<Key> allKeys() {
+        return Arrays.asList(Keys.values());
+    }
+
     public GameSettings() {
         integer(WIN_SCORE, 30);
         integer(LOOSE_PENALTY, 100);
@@ -57,12 +64,7 @@ public class GameSettings extends SettingsImpl implements SettingsReader<GameSet
     }
 
     private String loadLevelMap() {
-        if (Storage.levels.size() > 0) {
-            // TODO player has to be real, not PlayerFirst as dummy
-            return TextIOHelper.getStringFromResourcesRtf(Storage.levels.get("PlayerFirst"));
-        } else {
-            return TextIOHelper.getStringFromResourcesRtf(1);
-        }
+        return TextIOHelper.getStringFromResourcesRtf(1);
     }
 
     public Level level() {

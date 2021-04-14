@@ -56,8 +56,7 @@ public abstract class AbstractMultiplayerTest {
     private List<Player> players = new LinkedList<>();
     protected GameSettings settings = settings();
     protected Bomberman field;
-    protected Dice heroDice = mock(Dice.class);
-    protected Dice chopperDice = mock(Dice.class);
+    protected Dice dice = mock(Dice.class);
     private PrinterFactory printerFactory = new PrinterFactoryImpl();
     protected PerksSettingsWrapper perks;
 
@@ -67,16 +66,16 @@ public abstract class AbstractMultiplayerTest {
         perks = settings.perksSettings();
         givenWalls();
 
-        when(settings.getHero(any(Level.class), any(Dice.class))).thenAnswer(inv -> {
+        when(settings.getHero(any(Level.class))).thenAnswer(inv -> {
             Level level = settings.getLevel();
-            Hero hero = new Hero(level, heroDice);
+            Hero hero = new Hero(level);
             heroes.add(hero);
             return hero;
         });
 
-        when(settings.getWalls(heroDice)).thenReturn(walls);
+        when(settings.getWalls(dice)).thenReturn(walls);
 
-        field = new Bomberman(heroDice, settings);
+        field = new Bomberman(dice, settings);
     }
 
     protected GameSettings settings() {
@@ -88,7 +87,7 @@ public abstract class AbstractMultiplayerTest {
     public void givenBoard(int count) {
         for (int i = 0; i < count; i++) {
             listeners.add(mock(EventListener.class));
-            players.add(new Player(listener(i), heroDice, settings));
+            players.add(new Player(listener(i), settings));
             games.add(new Single(player(i), printerFactory));
         }
 
@@ -105,7 +104,7 @@ public abstract class AbstractMultiplayerTest {
     }
 
     protected MeatChopper meatChopperAt(int x, int y) {
-        MeatChopper chopper = new MeatChopper(pt(x, y), field, chopperDice);
+        MeatChopper chopper = new MeatChopper(pt(x, y), field, dice);
         chopper.stop();
         walls.add(chopper);
         return chopper;

@@ -23,6 +23,7 @@ package com.codenjoy.dojo.battlecity.model;
  */
 
 
+import com.codenjoy.dojo.battlecity.TestGameSettings;
 import com.codenjoy.dojo.battlecity.model.items.AITank;
 import com.codenjoy.dojo.battlecity.model.items.Bullet;
 import com.codenjoy.dojo.battlecity.model.items.Wall;
@@ -43,6 +44,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import static com.codenjoy.dojo.battlecity.TestGameSettings.*;
 import static com.codenjoy.dojo.battlecity.services.GameSettings.Keys.*;
 import static com.codenjoy.dojo.services.PointImpl.pt;
 import static org.junit.Assert.assertEquals;
@@ -52,13 +54,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class GameTest {
-
-    private static final int CHANCE = 20;
-    private static final int DICE_IMMORTALITY = 0*CHANCE;
-    private static final int DICE_BREAKING_WALLS = 1*CHANCE;
-    private static final int DICE_WALKING_ON_WATER = 2*CHANCE;
-    private static final int DICE_VISIBILITY = 3*CHANCE;
-    private static final int DICE_NO_SLIDING = 4*CHANCE;
 
     protected Dice dice;
     private Battlecity game;
@@ -81,21 +76,7 @@ public class GameTest {
     
     @Before
     public void setup() {
-        settings = new GameSettings()
-                .integer(SPAWN_AI_PRIZE, 4)
-                .integer(KILL_HITS_AI_PRIZE, 3)
-                .integer(AI_TICKS_PER_SHOOT, 10)
-                .integer(TANK_TICKS_PER_SHOOT, 1)
-                .integer(SLIPPERINESS, 3)
-                .integer(PRIZE_ON_FIELD, 3)
-                .integer(PRIZE_WORKING, 10)
-                .integer(AI_PRIZE_LIMIT, 10)
-                .integer(CHANCE_IMMORTALITY, CHANCE)
-                .integer(CHANCE_BREAKING_WALLS, CHANCE)
-                .integer(CHANCE_WALKING_ON_WATER, CHANCE)
-                .integer(CHANCE_VISIBILITY, CHANCE)
-                .integer(CHANCE_NO_SLIDING, CHANCE);
-
+        settings = new TestGameSettings();
         dice = mock(Dice.class);
     }
 
@@ -109,7 +90,7 @@ public class GameTest {
     }
 
     private void givenFl(String board) {
-        settings.string(LEVEL_MAP, board.replaceAll("\n", ""));
+        settings.string(LEVEL_MAP, board);
 
         GameRunner runner = new GameRunner() {
             @Override
@@ -135,18 +116,19 @@ public class GameTest {
         EventListener listener = mock(EventListener.class);
         listeners.add(listener);
 
-        Player player = new Player(listener, dice, settings){
+        Player player = new Player(listener, settings){
             @Override
             public void newHero(Field field) {
-                // do nothing
+                hero = tank;
+                hero.setPlayer(this);
+                hero.setActive(true);
+                hero.setAlive(true);
             }
         };
-        player.hero = tank;
 
         players.add(player);
 
         tank.init(game);
-        game.newGame(player);
         return player;
     }
 
@@ -185,6 +167,7 @@ public class GameTest {
                 game.reader(), players.get(0));
     }
 
+    // рисуем стенку
     @Test
     public void shouldBeWall_whenGameCreated() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -206,6 +189,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
+    // рисуем мой танк
     @Test
     public void shouldBeTankOnFieldWhenGameCreated() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -254,6 +238,7 @@ public class GameTest {
 
         dice(DICE_NO_SLIDING);
         game.tick();
+        events.verifyNoEvents();
 
         assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼         ☼\n" +
@@ -267,10 +252,13 @@ public class GameTest {
                 "☼    ▲    ☼\n" +
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_NO_SLIDING]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[5]]\n");
 
         assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼         ☼\n" +
@@ -352,6 +340,7 @@ public class GameTest {
 
         dice(DICE_NO_SLIDING);
         game.tick();
+        events.verifyNoEvents();
 
         assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼    #    ☼\n" +
@@ -365,10 +354,13 @@ public class GameTest {
                 "☼    ▲    ☼\n" +
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_NO_SLIDING]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[5]]\n");
 
         assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼    #    ☼\n" +
@@ -594,6 +586,8 @@ public class GameTest {
                 "☼         ☼\n" +
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         // RIGHT -> UP выполняется занос
         hero(0).right();
         game.tick();
@@ -611,6 +605,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(0), "[PRIZE_NO_SLIDING]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[5]]\n");
 
         hero(0).up();
         game.tick();
@@ -3671,7 +3666,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
-    // 1. Кусты
+    // дерево
     @Test
     public void shouldBeWallTree_whenGameCreated() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -3714,7 +3709,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
-    // 1.1) При выстреле пуля должна пролетать сквозь кусты
+    // При выстреле пуля должна пролетать сквозь дерево
     @Test
     public void shouldBulletFlyUnderTree_right() {
         givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
@@ -3923,7 +3918,19 @@ public class GameTest {
         return new LinkedList<>(Arrays.asList(walls));
     }
 
-    // Когда пуля и дерево находятся в одной координате когда отработывает метод tick()
+    // Когда пуля и дерево находятся в одной координате
+    // и я не вижу свой танк под деревом, то и пулю все равно не вижу
+    @Test
+    public void shouldBulletFlyUnderTwoTree_up_caseShowMyTankUnderTree() {
+        // given
+        settings.bool(SHOW_MY_TANK_UNDER_TREE, true);
+
+        // when then
+        shouldBulletFlyUnderTwoTree_up();
+    }
+
+    // Когда пуля и дерево находятся в одной координате
+    // я не вижу ее, дерево скрывает
     @Test
     public void shouldBulletFlyUnderTwoTree_up() {
         givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
@@ -4023,9 +4030,9 @@ public class GameTest {
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
-    // 1.2) кусты - когда игрок заходит под них, там видно кусты и больше никакого движения
+    // дерево - когда игрок заходит под него, там видно дерево и больше никакого движения
     @Test
-    public void shouldTankMove_underTree() {
+    public void shouldTankMove_underTree_case2() {
         givenFl("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
                 "☼%    ☼\n" +
@@ -4090,8 +4097,219 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
+    // дерево - когда игрок заходит под него,
+    // и в настройках сказано, что свой танк виден под деревом
+    // я вижу свой танк
+    @Test
+    public void shouldTankMove_underTree_caseShowMyTankUnderTree_case2() {
+        settings.bool(SHOW_MY_TANK_UNDER_TREE, true);
+
+        givenFl("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼%    ☼\n" +
+                "☼%    ☼\n" +
+                "☼     ☼\n" +
+                "☼▲    ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼%    ☼\n" +
+                "☼%    ☼\n" +
+                "☼▲    ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼%    ☼\n" +
+                "☼▲    ☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼▲    ☼\n" +
+                "☼%    ☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        hero(0).right();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼%►   ☼\n" +
+                "☼%    ☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        hero(0).right();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼% ►  ☼\n" +
+                "☼%    ☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+    }
+
     @Test
     public void shouldBulletFlyUnderTree_jointly_shouldTankMoveUnderTree() {
+        settings.bool(SHOW_MY_TANK_UNDER_TREE, true);
+
+        givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        ▲☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).act();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        ▲☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼        ▲☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        ▲☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        •☼\n" +
+                "☼        %☼\n" +
+                "☼        %☼\n" +
+                "☼        ▲☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼        •☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼        ▲☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        ▲☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).left();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼       ◄%☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).left();
+        game.tick();
+
+        hero(0).left();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼     ◄  %☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+    }
+
+    @Test
+    public void shouldBulletFlyUnderTree_jointly() {
+
         givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼         ☼\n" +
                 "☼         ☼\n" +
@@ -4166,8 +4384,32 @@ public class GameTest {
         hero(0).up();
         game.tick();
 
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼        •☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
         hero(0).up();
         game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼        %☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
 
         hero(0).left();
         game.tick();
@@ -4203,9 +4445,9 @@ public class GameTest {
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
-    // 1.3) так же не видно врагов под кустами
+    // так же не видно меня под деревом
     @Test
-    public void shouldOtherTankMove_underTree() {
+    public void shouldTankMove_underTree() {
 		givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
 				"☼▼        ☼\n" +
 				"☼         ☼\n" +
@@ -4235,6 +4477,18 @@ public class GameTest {
 
 		hero(0).down();
 		game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
 
 		hero(0).down();
 		game.tick();
@@ -4267,7 +4521,240 @@ public class GameTest {
 				"☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
-    // 1.4) под кустами не видно так же и ботов белых
+    // но если в сеттингах сказано что меня видно под деревьями, я - вижу
+    @Test
+    public void shouldTankMove_underTree_caseShowMyTankUnderTree() {
+        settings.bool(SHOW_MY_TANK_UNDER_TREE, true);
+
+        givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).down();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼▼        ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).down();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼▼        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).down();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(0).down();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+    }
+
+    // другого игрока не видно под деревом
+    @Test
+    public void shouldOtherTankMove_underTree() {
+        givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼˄        ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+    }
+
+    // даже если в сеттингах сказано что меня видно под деревьями,
+    // другого танка я не вижу все равно
+    @Test
+    public void shouldOtherTankMove_underTree_caseShowMyTankUnderTree() {
+        settings.bool(SHOW_MY_TANK_UNDER_TREE, true);
+
+        givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼˄        ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼☼☼☼☼\n" +
+                "☼▼        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼˄        ☼\n" +
+                "☼%        ☼\n" +
+                "☼%        ☼\n" +
+                "☼         ☼\n" +
+                "☼         ☼\n" +
+                "☼☼☼☼☼☼☼☼☼☼☼\n");
+    }
+
+    // под деревом не видно так же и ботов белых
     @Test
     public void shouldAITankMove_underTree() {
         givenFl("☼☼☼☼☼☼☼☼☼☼☼\n" +
@@ -4403,13 +4890,71 @@ public class GameTest {
                 "☼         ☼\n" +
                 "☼%        ☼\n" +
                 "☼%        ☼\n" +
-                "☼%        ☼\n" +
+                "☼Ѡ        ☼\n" +
                 "☼         ☼\n" +
                 "☼         ☼\n" +
                 "☼         ☼\n" +
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
+    // два танка не могут проехать друг через друга под деревьями
+    // но мой танк видно - так сказано в настройках
+    @Test
+    public void shouldTwoTankCanPassThroughEachOtherUnderTree_caseShowMyTankUnderTree() {
+        settings.bool(SHOW_MY_TANK_UNDER_TREE, true);
+        
+        givenFl("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼▼    ☼\n" +
+                "☼%    ☼\n" +
+                "☼%    ☼\n" +
+                "☼˄    ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        hero(0).down();
+        hero(1).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼▼    ☼\n" +
+                "☼%    ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        hero(0).down();
+        hero(1).up();
+        game.tick();
+
+        hero(0).down();
+        game.tick();
+
+        hero(1).up();
+        // Два танка не могут проехать через друг друга
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼▼    ☼\n" +
+                "☼%    ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        hero(0).right();
+        hero(1).right();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼%►   ☼\n" +
+                "☼%˃   ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+    }
+
+    // два танка не могут проехать друг через друга под деревьями
+    // но мой танк видно - так сказано в настройках
     @Test
     public void shouldTwoTankCanPassThroughEachOtherUnderTree() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -4462,7 +5007,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
-	// 2. Лёд
+	// Лёд
     @Test
     public void shouldBeWallIce_whenGameCreated() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -4484,7 +5029,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
-    // 2.1) когда герой двигается по льду, происходит скольжение
+    // когда герой двигается по льду, происходит скольжение
     // (он проскальзывает одну команду).
     // Если только заезжаем - то сразу же начинается занос,
     // то есть запоминается команда которой заезжали на лед
@@ -4673,7 +5218,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
-    //2.2) также когда на нем двигается враг он проскальзывает команду на два тика
+    // также когда на нем двигается враг он проскальзывает команду на два тика
     @Test
     public void shouldOtherTankMoveLeftThenUpThenDown_onIce() {
         settings.integer(SLIPPERINESS, 1);
@@ -4756,9 +5301,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼☼☼☼☼\n");
     }
 
-    //2.3) также когда на нем двигается бот он проскальзывает команду на два тика
-
-    //3. Река
+    // Река
     @Test
     public void shouldBeWallWater_whenGameCreated() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -4780,7 +5323,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
-	// 3.1) река - через нее герою нельзя пройти. но можно стрелять
+	// река - через нее герою нельзя пройти. но можно стрелять
 	@Test
 	public void shouldTankCanGoIfRiverAtWay() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -4818,6 +5361,14 @@ public class GameTest {
 
 		hero(0).up();
 		game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼~    ☼\n" +
+                "☼▲    ☼\n" +
+                "☼☼☼☼☼☼☼\n");
 
 		hero(0).act();
 		game.tick();
@@ -4908,7 +5459,7 @@ public class GameTest {
 				"☼☼☼☼☼☼☼\n");
     }
 
-    // 3.2) река - через нее врагу нельзя пройти. но можно стрелять
+    // река - через нее врагу нельзя пройти. но можно стрелять
     @Test
     public void shouldOtherTankBullet_canGoIfRiverAtWay() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -5011,7 +5562,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
-    // 3.3) река - через нее боту нельзя пройти. но можно стрелять
+    // река - через нее боту нельзя пройти. но можно стрелять
     @Test
     public void shouldAITankBullet_canGoIfRiverAtWay() {
         givenFl("☼☼☼☼☼☼☼\n" +
@@ -5952,8 +6503,8 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
-    // приз над кустами должен исчезнуть через 2 тика, если его не подобрали
-    // после исчезновения приза видим кусты
+    // приз над деревом должен исчезнуть через 2 тика, если его не подобрали
+    // после исчезновения приза видим дерево
     @Test
     public void shouldExpirePrizeOnField_disappearOnTree() {
         settings.integer(KILL_HITS_AI_PRIZE, 1)
@@ -6139,6 +6690,8 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         game.tick();
 
@@ -6151,6 +6704,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[1]]\n");
 
         hero(0).up();
         game.tick();
@@ -6199,6 +6753,8 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(1).up();
         game.tick();
 
@@ -6212,6 +6768,9 @@ public class GameTest {
 
         assertPrize(hero(0), "[]");
         assertPrize(hero(1), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents(
+                "listener(0) => []\n" +
+                "listener(1) => [CATCH_PRIZE[1]]\n");
 
         hero(1).up();
         game.tick();
@@ -6225,15 +6784,17 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
     }
 
+    // герой берет приз под деревом - когда его видно под деревьями 
     @Test
-    public void shouldHeroTookPrize_underTree() {
+    public void shouldHeroTookPrize_underTree_caseShowMyTankUnderTree() {
         settings.integer(KILL_HITS_AI_PRIZE, 1)
-                .integer(PRIZE_ON_FIELD, 3);
+                .integer(PRIZE_ON_FIELD, 3)
+                .bool(SHOW_MY_TANK_UNDER_TREE, true);
 
         givenFl("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
                 "☼¿    ☼\n" +
-                "☼%    ☼\n" +
+                "☼%%   ☼\n" +
                 "☼     ☼\n" +
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
@@ -6245,7 +6806,7 @@ public class GameTest {
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
                 "☼     ☼\n" +
-                "☼%    ☼\n" +
+                "☼%%   ☼\n" +
                 "☼▲    ☼\n" +
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
@@ -6257,10 +6818,12 @@ public class GameTest {
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
                 "☼     ☼\n" +
-                "☼1    ☼\n" +
+                "☼1%   ☼\n" +
                 "☼▲    ☼\n" +
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
+
+        events.verifyNoEvents();
 
         hero(0).up();
         game.tick();
@@ -6268,12 +6831,13 @@ public class GameTest {
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
                 "☼     ☼\n" +
-                "☼%    ☼\n" +
+                "☼▲%   ☼\n" +
                 "☼     ☼\n" +
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[1]]\n");
 
         hero(0).up();
         game.tick();
@@ -6281,7 +6845,73 @@ public class GameTest {
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
                 "☼▲    ☼\n" +
-                "☼%    ☼\n" +
+                "☼%%   ☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+    }
+
+    // герой берет приз под деревом - когда его не видно под деревьями 
+    @Test
+    public void shouldHeroTookPrize_underTree() {
+        settings.integer(KILL_HITS_AI_PRIZE, 1)
+                .integer(PRIZE_ON_FIELD, 3);
+
+        givenFl("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼¿    ☼\n" +
+                "☼%%   ☼\n" +
+                "☼     ☼\n" +
+                "☼▲    ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        ai(0).down();
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼%%   ☼\n" +
+                "☼▲    ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        ai(0).kill(mock(Bullet.class));
+        dice(DICE_IMMORTALITY);
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼1%   ☼\n" +
+                "☼▲    ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        events.verifyNoEvents();
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼%%   ☼\n" +
+                "☼     ☼\n" +
+                "☼     ☼\n" +
+                "☼☼☼☼☼☼☼\n");
+
+        assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[1]]\n");
+
+        hero(0).up();
+        game.tick();
+
+        assertD("☼☼☼☼☼☼☼\n" +
+                "☼     ☼\n" +
+                "☼▲    ☼\n" +
+                "☼%%   ☼\n" +
                 "☼     ☼\n" +
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
@@ -6324,6 +6954,8 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(1).up();
         game.tick();
 
@@ -6337,6 +6969,9 @@ public class GameTest {
 
         assertPrize(hero(0), "[]");
         assertPrize(hero(1), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents(
+                "listener(0) => []\n" +
+                "listener(1) => [CATCH_PRIZE[1]]\n");
 
         hero(1).up();
         game.tick();
@@ -6375,6 +7010,7 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+
         ai(0).kill(mock(Bullet.class));
         dice(DICE_IMMORTALITY);
         game.tick();
@@ -6387,6 +7023,8 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         game.tick();
 
@@ -6398,6 +7036,7 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[1]]\n");
         assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
 
         hero(0).up();
@@ -6449,6 +7088,8 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(1).up();
         game.tick();
 
@@ -6462,6 +7103,9 @@ public class GameTest {
 
         assertPrize(hero(0), "[]");
         assertPrize(hero(1), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents(
+                "listener(0) => []\n" +
+                "listener(1) => [CATCH_PRIZE[1]]\n");
 
         hero(1).up();
         game.tick();
@@ -6559,6 +7203,8 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         dice(DICE_IMMORTALITY);
         hero(0).up();
         game.tick();
@@ -6572,6 +7218,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[1]]\n");
 
         hero(0).up();
         game.tick();
@@ -6627,6 +7274,8 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         hero(1).left();
         game.tick();
@@ -6640,6 +7289,9 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(0), "[]");
+        events.verifyAllEvents(
+                "listener(0) => [KILL_YOUR_TANK]\n" +
+                "listener(1) => [KILL_OTHER_HERO_TANK[1]]\n");
 
         hero(1).left();
         game.tick();
@@ -6663,6 +7315,8 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(1).left();
         game.tick();
 
@@ -6675,6 +7329,9 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(1), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents(
+                "listener(0) => []\n" +
+                "listener(1) => [CATCH_PRIZE[1]]\n");
 
         hero(1).up();
         game.tick();
@@ -6686,10 +7343,6 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
-
-        events.verifyAllEvents(
-                "listener(0) => [KILL_YOUR_TANK]\n" +
-                        "listener(1) => [KILL_OTHER_HERO_TANK[1]]\n");
 
         assertPrize(hero(1), "[PRIZE_IMMORTALITY]");
     }
@@ -6811,6 +7464,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(0), "[]");
+        events.verifyAllEvents("listener(0) => []\n");
     }
 
     @Test
@@ -6872,6 +7526,8 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
+
+        events.verifyNoEvents();
 
         ai(0).up();
         game.tick();
@@ -6947,6 +7603,8 @@ public class GameTest {
                 "☼  ╬  ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         game.tick();
 
@@ -6959,6 +7617,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(0), "[PRIZE_BREAKING_WALLS]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[2]]\n");
 
         hero(0).right();
         hero(0).act();
@@ -7048,6 +7707,9 @@ public class GameTest {
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_BREAKING_WALLS]");
+        events.verifyAllEvents(
+                "listener(0) => [CATCH_PRIZE[2]]\n" +
+                "listener(1) => []\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼╬╬╬  ☼\n" +
@@ -7103,6 +7765,8 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         dice(DICE_BREAKING_WALLS);
         game.tick();
 
@@ -7118,6 +7782,7 @@ public class GameTest {
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_BREAKING_WALLS]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[2]]\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼╬╬╬  ☼\n" +
@@ -7194,6 +7859,8 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         dice(DICE_BREAKING_WALLS);
         game.tick();
 
@@ -7209,6 +7876,7 @@ public class GameTest {
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_BREAKING_WALLS]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[2]]\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼╬    ☼\n" +
@@ -7274,6 +7942,7 @@ public class GameTest {
                 "☼▲   ˄☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+
         dice(DICE_IMMORTALITY);
         hero(1).up();
         game.tick();
@@ -7286,11 +7955,16 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         hero(1).left();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents(
+                "listener(0) => [CATCH_PRIZE[1]]\n" +
+                "listener(1) => []\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
@@ -7348,6 +8022,7 @@ public class GameTest {
                 "☼▲   ˄☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+
         dice(DICE_IMMORTALITY);
         hero(1).up();
         game.tick();
@@ -7360,11 +8035,16 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         hero(1).left();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents(
+                "listener(0) => [CATCH_PRIZE[1]]\n" +
+                "listener(1) => []\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
@@ -7483,11 +8163,14 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         ai(0).down();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[1]]\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼▲    ☼\n" +
@@ -7571,11 +8254,14 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         ai(0).down();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_IMMORTALITY]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[1]]\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼▲    ☼\n" +
@@ -8038,6 +8724,8 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         game.tick();
 
@@ -8051,6 +8739,7 @@ public class GameTest {
 
         hero(0).up();
         game.tick();
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[3]]\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
@@ -8120,11 +8809,16 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         hero(1).up();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_WALKING_ON_WATER]");
+        events.verifyAllEvents(
+                "listener(0) => [CATCH_PRIZE[3]]\n" +
+                "listener(1) => []\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼     ☼\n" +
@@ -8195,6 +8889,8 @@ public class GameTest {
                 "☼▲    ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         game.tick();
 
@@ -8208,6 +8904,7 @@ public class GameTest {
 
         hero(0).up();
         game.tick();
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[3]]\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼~    ☼\n" +
@@ -8290,6 +8987,8 @@ public class GameTest {
                 "☼  ▲  ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         assertPrize(hero(0), "[]");
 
         hero(0).up();
@@ -8304,6 +9003,7 @@ public class GameTest {
                 "☼☼☼☼☼☼☼\n");
 
         assertPrize(hero(0), "[PRIZE_WALKING_ON_WATER]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[3]]\n");
 
         hero(0).up();
         game.tick();
@@ -8600,11 +9300,16 @@ public class GameTest {
                 "☼▲ ˄  ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         hero(1).up();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_BREAKING_WALLS]");
+        events.verifyAllEvents(
+                "listener(0) => [CATCH_PRIZE[2]]\n" +
+                "listener(1) => []\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼╬╬╬  ☼\n" +
@@ -9119,11 +9824,14 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         ai(0).up();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_VISIBILITY]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[4]]\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼  %? ☼\n" +
@@ -9192,11 +9900,16 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         hero(1).up();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_VISIBILITY]");
+        events.verifyAllEvents(
+                "listener(0) => [CATCH_PRIZE[4]]\n" +
+                "listener(1) => []\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼  %% ☼\n" +
@@ -9255,11 +9968,14 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         ai(0).up();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_VISIBILITY]");
+        events.verifyAllEvents("listener(0) => [CATCH_PRIZE[4]]\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼  %? ☼\n" +
@@ -9364,11 +10080,16 @@ public class GameTest {
                 "☼     ☼\n" +
                 "☼☼☼☼☼☼☼\n");
 
+        events.verifyNoEvents();
+
         hero(0).up();
         hero(1).up();
         game.tick();
 
         assertPrize(hero(0), "[PRIZE_VISIBILITY]");
+        events.verifyAllEvents(
+                "listener(0) => [CATCH_PRIZE[4]]\n" +
+                "listener(1) => []\n");
 
         assertD("☼☼☼☼☼☼☼\n" +
                 "☼  %% ☼\n" +

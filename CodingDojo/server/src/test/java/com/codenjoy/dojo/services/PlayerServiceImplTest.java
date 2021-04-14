@@ -45,6 +45,7 @@ import com.codenjoy.dojo.services.printer.CharElements;
 import com.codenjoy.dojo.services.printer.GraphicPrinter;
 import com.codenjoy.dojo.services.printer.PrinterFactory;
 import com.codenjoy.dojo.services.room.RoomService;
+import com.codenjoy.dojo.services.semifinal.SemifinalService;
 import com.codenjoy.dojo.transport.screen.ScreenRecipient;
 import com.codenjoy.dojo.transport.screen.ScreenSender;
 import lombok.SneakyThrows;
@@ -64,7 +65,6 @@ import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import java.io.IOException;
 import java.util.*;
 
 import static com.codenjoy.dojo.services.PointImpl.pt;
@@ -121,7 +121,7 @@ public class PlayerServiceImplTest {
     private Chat chat;
 
     @MockBean
-    private Semifinal semifinal;
+    private SemifinalService semifinal;
 
     @MockBean
     private ActionLogger actionLogger;
@@ -206,8 +206,9 @@ public class PlayerServiceImplTest {
         when(gameType.getPrinterFactory()).thenReturn(PrinterFactory.get(printer));
         when(gameType.getMultiplayerType(any())).thenReturn(MultiplayerType.SINGLE);
 
-        // по умолчанию все команаты будут активными
+        // по умолчанию все команаты будут активными и открытыми для регистрации
         when(roomService.isActive(anyString())).thenReturn(true);
+        when(roomService.isOpened(anyString())).thenReturn(true);
 
         doAnswer(inv -> {
             String id = inv.getArgument(0);
@@ -303,11 +304,8 @@ public class PlayerServiceImplTest {
         playerService.closeRegistration();
 
         // then
-        Player player = createPlayer(VASYA);
-        assertSame(NullPlayer.INSTANCE, player);
-
-        player = playerService.get(VASYA);
-        assertSame(NullPlayer.INSTANCE, player);
+        assertNotCreated(createPlayer(VASYA));
+        assertNotCreated(playerService.get(VASYA));
 
         assertFalse(playerService.isRegistrationOpened());
 
@@ -317,11 +315,8 @@ public class PlayerServiceImplTest {
         // then
         assertTrue(playerService.isRegistrationOpened());
 
-        player = createPlayer(VASYA);
-        assertSame(VASYA, player.getId());
-
-        player = playerService.get(VASYA);
-        assertSame(VASYA, player.getId());
+        assertCreated(createPlayer(VASYA));
+        assertSame(VASYA, playerService.get(VASYA).getId());
     }
 
     @Test
@@ -369,6 +364,92 @@ public class PlayerServiceImplTest {
 
     protected void setActive(String room, boolean active) {
         when(roomService.isActive(room)).thenReturn(active);
+    }
+
+    protected void setRegistrationOpened(String room, boolean opened) {
+        when(roomService.isOpened(room)).thenReturn(opened);
+    }
+
+    @Test
+    public void shouldNotCreateUsers_forRoomWhereRegistrationIsClosed_case1() {
+        // given
+        setRegistrationOpened("room1", false);
+
+        // when
+        assertNotCreated(createPlayer(VASYA, "game1", "room1"));
+        assertNotCreated(createPlayer(PETYA, "game1", "room1"));
+        assertCreated(createPlayer(KATYA, "game1", "room2"));
+        assertCreated(createPlayer(OLIA, "game3", "room3"));
+
+        // then
+        assertPlayers("[katya, olia]");
+
+        // when
+        setRegistrationOpened("room1", true);
+
+        assertCreated(createPlayer(VASYA, "game1", "room1"));
+        assertCreated(createPlayer(PETYA, "game1", "room1"));
+
+        // then
+        assertPlayers("[katya, olia, vasya, petya]");
+    }
+
+    @Test
+    public void shouldNotCreateUsers_forRoomWhereRegistrationIsClosed_case2() {
+        // given
+        setRegistrationOpened("room2", false);
+
+        // when
+        assertCreated(createPlayer(VASYA, "game1", "room1"));
+        assertCreated(createPlayer(PETYA, "game1", "room1"));
+        assertNotCreated(createPlayer(KATYA, "game1", "room2"));
+        assertCreated(createPlayer(OLIA, "game3", "room3"));
+
+        // then
+        assertPlayers("[vasya, petya, olia]");
+
+        // when
+        setRegistrationOpened("room2", true);
+
+        assertCreated(createPlayer(KATYA, "game1", "room2"));
+
+        // then
+        assertPlayers("[vasya, petya, olia, katya]");
+    }
+
+    private void assertCreated(Player player) {
+        assertNotSame(NullPlayer.INSTANCE, player);
+    }
+
+    private void assertNotCreated(Player player) {
+        assertSame(NullPlayer.INSTANCE, player);
+    }
+
+    @Test
+    public void shouldNotCreateUsers_forRoomWhereRegistrationIsClosed_case3() {
+        // given
+        setRegistrationOpened("room1", false);
+        setRegistrationOpened("room3", false);
+
+        // when
+        assertNotCreated(createPlayer(VASYA, "game1", "room1"));
+        assertNotCreated(createPlayer(PETYA, "game1", "room1"));
+        assertCreated(createPlayer(KATYA, "game1", "room2"));
+        assertNotCreated(createPlayer(OLIA, "game3", "room3"));
+
+        // then
+        assertPlayers("[katya]");
+
+        // when
+        setRegistrationOpened("room1", true);
+        setRegistrationOpened("room3", true);
+
+        assertCreated(createPlayer(VASYA, "game1", "room1"));
+        assertCreated(createPlayer(PETYA, "game1", "room1"));
+        assertCreated(createPlayer(OLIA, "game3", "room3"));
+
+        // then
+        assertPlayers("[katya, vasya, petya, olia]");
     }
 
     @Test
@@ -425,22 +506,18 @@ public class PlayerServiceImplTest {
                 "{petya=PlayerData[" +
                     "BoardSize:15, Board:'DCBA', Game:'game', " +
                     "Score:234, Info:'', " +
-                    "Scores:'{'petya':234}', " +
-                    "HeroesData:'{" +
-                        "'coordinates':{'petya':{'coordinate':{'x':3,'y':4},'level':0,'multiplayer':false}}," +
-                        "'group':['petya']," +
-                        "'readableNames':{'petya':'readable_petya'}" +
-                        "}', " +
+                    "Scores:'{petya=234}', " +
+                    "Coordinates:'{petya=HeroDataImpl(level=0, coordinate=[3,4], isMultiplayer=false, additionalData=null)}', " +
+                    "ReadableNames:'{petya=readable_petya}', " +
+                    "Group:[petya], " +
                     "LastChatMessage:106558567], " +
                 "vasya=PlayerData[" +
                     "BoardSize:15, Board:'ABCD', Game:'game', " +
                     "Score:123, Info:'', " +
-                    "Scores:'{'vasya':123}', " +
-                    "HeroesData:'{" +
-                        "'coordinates':{'vasya':{'coordinate':{'x':1,'y':2},'level':0,'multiplayer':false}}," +
-                        "'group':['vasya']," +
-                        "'readableNames':{'vasya':'readable_vasya'}" +
-                        "}', " +
+                    "Scores:'{vasya=123}', " +
+                    "Coordinates:'{vasya=HeroDataImpl(level=0, coordinate=[1,2], isMultiplayer=false, additionalData=null)}', " +
+                    "ReadableNames:'{vasya=readable_vasya}', " +
+                    "Group:[vasya], " +
                     "LastChatMessage:111979568]}",
                 data.toString().replaceAll("\"", "'"));
     }
@@ -508,7 +585,7 @@ public class PlayerServiceImplTest {
 
         //then
         assertEquals(NullPlayer.INSTANCE, playerService.get(VASYA));
-        assertNotSame(NullPlayer.INSTANCE, playerService.get(PETYA));
+        assertCreated(playerService.get(PETYA));
         assertEquals(1, playerGames.size());
     }
 
@@ -543,6 +620,10 @@ public class PlayerServiceImplTest {
     private Player createPlayer(String id, String game, String room) {
         Player player = playerService.register(id, game, room,
                 getCallbackUrl(id));
+        if (player == NullPlayer.INSTANCE) {
+            return player;
+        }
+
         players.add(player);
         chatIds.put(room, Math.abs(id.hashCode()));
 
@@ -1275,7 +1356,7 @@ public class PlayerServiceImplTest {
         verify(gameField(KATYA), never()).clearScore();
         verify(gameField(OLIA), never()).clearScore();
 
-        verify(semifinal).clean();
+        verify(semifinal).clean("room1");
     }
 
     private PlayerScores playerScores(int index) {
