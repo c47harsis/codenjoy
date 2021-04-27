@@ -32,30 +32,75 @@ import com.codenjoy.dojo.services.Game;
 import com.codenjoy.dojo.services.multiplayer.Single;
 import com.codenjoy.dojo.services.printer.PrinterFactory;
 import com.codenjoy.dojo.services.printer.PrinterFactoryImpl;
+import com.codenjoy.dojo.utils.events.EventsListenersAssert;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.stubbing.OngoingStubbing;
 
+import java.util.LinkedList;
+import java.util.List;
+
+import static com.codenjoy.dojo.loderunner.model.GameTest.getLevel;
 import static com.codenjoy.dojo.loderunner.services.GameSettings.Keys.ENEMIES_COUNT;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class EnemyMultiplayerTest {
 
     private Dice dice;
-    private EventListener listener;
+    private List<EventListener> listeners = new LinkedList<>();
+    private List<Player> players = new LinkedList<>();
     private Game game;
     private Loderunner field;
     private PrinterFactory printerFactory;
     private GameSettings settings;
+    private EventsListenersAssert events;
 
     @Before
     public void setUp() {
         dice = mock(Dice.class);
         printerFactory = new PrinterFactoryImpl();
         settings = new TestSettings();
+        events = new EventsListenersAssert(() -> listeners, Events.class);
+    }
+
+    @After
+    public void tearDown() {
+        events.verifyNoEvents();
+    }
+
+    private void dice(int... ints) {
+        OngoingStubbing<Integer> when = when(dice.next(anyInt()));
+        for (int i : ints) {
+            when = when.thenReturn(i);
+        }
+    }
+
+    private void atBoard(String expected) {
+        assertEquals(expected, game.getBoardAsString());
+    }
+
+    private void setupPlayer(int x, int y) {
+        EventListener listener = mock(EventListener.class);
+        listeners.add(listener);
+        Player player = new Player(listener, settings);
+        players.add(player);
+        game = new Single(player, printerFactory);
+        game.on(field);
+        dice(x, y);
+        game.newGame();
+    }
+
+    private void setupGm(String board) {
+        LevelImpl level = getLevel(board, settings, dice);
+        field = new Loderunner(level, dice, settings);
+
+        for (Hero hero : level.getHeroes()) {
+            setupPlayer(hero.getX(), hero.getY());
+        }
     }
 
     // чертик идет за тобой
@@ -71,7 +116,6 @@ public class EnemyMultiplayerTest {
                 "☼######☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        dice(0); // охотимся за первым игроком
         field.tick();
 
         atBoard("☼☼☼☼☼☼☼☼\n" +
@@ -147,13 +191,12 @@ public class EnemyMultiplayerTest {
                 "☼######☼\n" +
                 "☼☼☼☼☼☼☼☼\n");
 
-        verify(listener).event(Events.KILL_HERO);
-        assertTrue(game.isGameOver());
+        events.verifyAllEvents("[KILL_HERO]");
+        assertEquals(true, game.isGameOver());
 
         dice(1, 4);
         game.newGame();
 
-        dice(0); // охотимся за первым игроком
         field.tick();
 
         atBoard("☼☼☼☼☼☼☼☼\n" +
@@ -179,7 +222,6 @@ public class EnemyMultiplayerTest {
                 "☼######☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        dice(0); // охотимся за первым игроком
         field.tick();
 
         atBoard("☼☼☼☼☼☼☼☼\n" +
@@ -219,7 +261,6 @@ public class EnemyMultiplayerTest {
                 "☼######☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        dice(0); // охотимся за первым игроком
         field.tick();
 
         atBoard("☼☼☼☼☼☼☼☼\n" +
@@ -245,7 +286,6 @@ public class EnemyMultiplayerTest {
                 "☼######☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        dice(0); // охотимся за первым игроком
         field.tick();
 
         atBoard("☼☼☼☼☼☼☼☼\n" +
@@ -272,7 +312,6 @@ public class EnemyMultiplayerTest {
                 "☼######☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        dice(0); // охотимся за первым игроком
         field.tick();
 
         atBoard("☼☼☼☼☼☼☼☼\n" +
@@ -284,13 +323,6 @@ public class EnemyMultiplayerTest {
                 "☼######☼\n" +
                 "☼☼☼☼☼☼☼☼\n");
 
-    }
-
-    private void dice(int... ints) {
-        OngoingStubbing<Integer> when = when(dice.next(anyInt()));
-        for (int i : ints) {
-            when = when.thenReturn(i);
-        }
     }
 
     @Test
@@ -305,7 +337,6 @@ public class EnemyMultiplayerTest {
                 "☼######☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        dice(0); // охотимся за первым игроком
         field.tick();
 
         atBoard("☼☼☼☼☼☼☼☼\n" +
@@ -332,7 +363,6 @@ public class EnemyMultiplayerTest {
                 "☼######☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        dice(0); // охотимся за первым игроком
         field.tick();
         field.tick();
         field.tick();
@@ -348,8 +378,17 @@ public class EnemyMultiplayerTest {
                 "☼☼☼☼☼☼☼☼\n");
 
         setupPlayer(1, 4);
-        dice(0); // охотимся за первым игроком
         field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼   (  ☼\n" +
+                "☼######☼\n" +
+                "☼►     ☼\n" +
+                "☼###H##☼\n" +
+                "☼ » H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
         field.tick();
         field.tick();
         field.tick();
@@ -367,27 +406,235 @@ public class EnemyMultiplayerTest {
                 "☼   H  ☼\n" +
                 "☼######☼\n" +
                 "☼☼☼☼☼☼☼☼\n");
+
+        events.verifyAllEvents(
+                "listener(0) => []\n" +
+                "listener(1) => [KILL_HERO]\n");
     }
 
+    // каждый чертик бежит за своим героем, даже если к нему занятый уже герой ближе
+    @Test
+    public void shouldEveryEnemyRunsAfterHisHero_evenIfThereIsAnotherHeroNearbyWhoIsAlreadyBeingHunted() {
+        settings.integer(ENEMIES_COUNT, 2);
+        setupGm("☼☼☼☼☼☼☼☼" +
+                "☼»  ► »☼" +
+                "☼H####H☼" +
+                "☼H    H☼" +
+                "☼###H##☼" +
+                "☼  ►H  ☼" +
+                "☼######☼" +
+                "☼☼☼☼☼☼☼☼");
 
-    private void atBoard(String expected) {
-        assertEquals(expected, game.getBoardAsString());
+        field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼ » (  ☼\n" +
+                "☼H####Q☼\n" +
+                "☼H    H☼\n" +
+                "☼###H##☼\n" +
+                "☼  ►H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼  »(  ☼\n" +
+                "☼H####H☼\n" +
+                "☼H    Q☼\n" +
+                "☼###H##☼\n" +
+                "☼  ►H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        events.verifyAllEvents(
+                "listener(0) => [KILL_HERO]\n" +
+                "listener(1) => []\n");
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼   Z  ☼\n" +
+                "☼H####H☼\n" +
+                "☼H   «H☼\n" +
+                "☼###H##☼\n" +
+                "☼  ►H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        events.verifyAllEvents(
+                "listener(0) => []\n" +
+                "listener(1) => []\n");
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼   Z» ☼\n" +
+                "☼H####H☼\n" +
+                "☼H  « H☼\n" +
+                "☼###H##☼\n" +
+                "☼  ►H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼   Z »☼\n" +
+                "☼H####H☼\n" +
+                "☼H    H☼\n" +
+                "☼###Q##☼\n" +
+                "☼  ►H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼   Z  ☼\n" +
+                "☼H####Q☼\n" +
+                "☼H    H☼\n" +
+                "☼###H##☼\n" +
+                "☼  ►Q  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        events.verifyAllEvents(
+                "listener(0) => []\n" +
+                "listener(1) => [KILL_HERO]\n");
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼   Z  ☼\n" +
+                "☼H####H☼\n" +
+                "☼H    Q☼\n" +
+                "☼###H##☼\n" +
+                "☼  ѠH  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        // больше не за кем охотитья - охотники стоят на месте
+        field.tick();
+
+        events.verifyAllEvents(
+                "listener(0) => []\n" +
+                "listener(1) => []\n");
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼   Z  ☼\n" +
+                "☼H####H☼\n" +
+                "☼H    Q☼\n" +
+                "☼###H##☼\n" +
+                "☼  ѠH  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼   Z  ☼\n" +
+                "☼H####H☼\n" +
+                "☼H    Q☼\n" +
+                "☼###H##☼\n" +
+                "☼  ѠH  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        // даже если на поле никого нет, чертики стоят на месте
+        removePlayer(1);
+        removePlayer(0);
+
+        field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼      ☼\n" +
+                "☼H####H☼\n" +
+                "☼H    Q☼\n" +
+                "☼###H##☼\n" +
+                "☼  «H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        // но стоит двоим ребятам появиться на поле
+        // как вдруг охотники начнут охотиться каждый за своим
+        setupPlayer(1, 2);
+        setupPlayer(5, 6);
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼    ► ☼\n" +
+                "☼H####H☼\n" +
+                "☼H    Q☼\n" +
+                "☼###H##☼\n" +
+                "☼( «H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼    ► ☼\n" +
+                "☼H####Q☼\n" +
+                "☼H    H☼\n" +
+                "☼###H##☼\n" +
+                "☼(« H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        // если один вдруг пропадет, то его охотник переключится
+        removePlayer(0);
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼    ► ☼\n" +
+                "☼H####Q☼\n" +
+                "☼H    H☼\n" +
+                "☼###H##☼\n" +
+                "☼ « H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼    ►»☼\n" +
+                "☼H####H☼\n" +
+                "☼H    H☼\n" +
+                "☼###H##☼\n" +
+                "☼  »H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        // и после того как нагонят оставшегося, снова зависнут
+        field.tick();
+
+        events.verifyAllEvents("[KILL_HERO]");
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼    Ѡ ☼\n" +
+                "☼H####H☼\n" +
+                "☼H    H☼\n" +
+                "☼###H##☼\n" +
+                "☼  »H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
+
+        field.tick();
+
+        events.verifyAllEvents("[]");
+
+        atBoard("☼☼☼☼☼☼☼☼\n" +
+                "☼    Ѡ ☼\n" +
+                "☼H####H☼\n" +
+                "☼H    H☼\n" +
+                "☼###H##☼\n" +
+                "☼  »H  ☼\n" +
+                "☼######☼\n" +
+                "☼☼☼☼☼☼☼☼\n");
     }
 
-    private void setupPlayer(int x, int y) {
-        listener = mock(EventListener.class);
-        game = new Single(new Player(listener, settings), printerFactory);
-        game.on(field);
-        dice(x, y);
-        game.newGame();
-    }
-
-    private void setupGm(String map) {
-        Level level = new LevelImpl(map, dice);
-        field = new Loderunner(level, dice, settings);
-
-        int px = level.getHeroes().get(0).getX();
-        int py = level.getHeroes().get(0).getY();
-        setupPlayer(px, py);
+    private void removePlayer(int index) {
+        field.remove(players.get(index));
+        players.remove(index);
+        listeners.remove(index);
     }
 }

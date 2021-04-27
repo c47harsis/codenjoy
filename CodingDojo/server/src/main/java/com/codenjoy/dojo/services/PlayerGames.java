@@ -27,6 +27,7 @@ import com.codenjoy.dojo.services.lock.LockedGame;
 import com.codenjoy.dojo.services.multiplayer.*;
 import com.codenjoy.dojo.services.nullobj.NullPlayerGame;
 import com.codenjoy.dojo.services.room.RoomService;
+import com.codenjoy.dojo.web.controller.Validator;
 import com.google.common.collect.Multimap;
 import lombok.experimental.FieldNameConstants;
 import org.json.JSONObject;
@@ -112,18 +113,20 @@ public class PlayerGames implements Iterable<PlayerGame>, Tickable {
         }
     }
 
+    // TODO по хорошему тут тоже надо optional
     public PlayerGame get(String id) {
-        return all.stream()
-                .filter(pg -> pg.getPlayer().getId().equals(id))
-                .findFirst()
+        return get(pg -> Objects.equals(id, pg.getPlayerId()))
                 .orElse(NullPlayerGame.INSTANCE);
     }
 
-    public PlayerGame get(GamePlayer player) {
+    public Optional<PlayerGame> get(Predicate<PlayerGame> filter) {
         return all.stream()
-                .filter(pg -> pg.getGame().getPlayer().equals(player))
-                .findFirst()
-                .orElse(null);
+                .filter(filter)
+                .findFirst();
+    }
+
+    public Optional<PlayerGame> get(GamePlayer player) {
+        return get(pg -> Objects.equals(player, pg.getGame().getPlayer()));
     }
 
     private void play(Game game, String room, GameType gameType, JSONObject save) {
@@ -192,8 +195,9 @@ public class PlayerGames implements Iterable<PlayerGame>, Tickable {
         List<GamePlayer> alone = spreader.remove(game.getPlayer());
 
         return alone.stream()
-                .map(p -> get(p))       // GamePlayer
-                .filter(p -> p != null) // PlayerGame
+                .map(this::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(toList());
     }
 
@@ -238,6 +242,10 @@ public class PlayerGames implements Iterable<PlayerGame>, Tickable {
         return pg -> pg.getRoom().equals(room);
     }
 
+    public static Predicate<PlayerGame> exclude(List<String> ids) {
+        return pg -> !ids.contains(pg.getPlayerId());
+    }
+
     public Predicate<PlayerGame> withActive() {
         return playerGame -> roomService.isActive(playerGame.getRoom());
     }
@@ -246,17 +254,17 @@ public class PlayerGames implements Iterable<PlayerGame>, Tickable {
      * @return Возвращает уникальные (недублирующиеся) GameType в которые сейчас играют.
      */
     public List<GameType> getGameTypes() {
-        List<GameType> result = new LinkedList<>();
+        Map<String, GameType> result = new LinkedHashMap<>();
 
         for (PlayerGame playerGame : all) {
             GameType gameType = playerGame.getGameType();
             gameType = RoomGameType.unwrap(gameType);
-            if (!result.contains(gameType)) {
-                result.add(gameType);
+            if (!result.containsKey(gameType.name())) {
+                result.put(gameType.name(), gameType);
             }
         }
 
-        return result;
+        return new ArrayList<>(result.values());
     }
 
     @Override
@@ -375,7 +383,7 @@ public class PlayerGames implements Iterable<PlayerGame>, Tickable {
                 .forEach(pg -> remove(pg.getPlayer()));
     }
 
-    public List<Player> getPlayers(String game) {
+    public List<Player> getPlayersByGame(String game) {
         return all.stream()
                 .map(playerGame -> playerGame.getPlayer())
                 .filter(player -> player.getGame().equals(game))
@@ -413,15 +421,17 @@ public class PlayerGames implements Iterable<PlayerGame>, Tickable {
         playerGame.fireOnLevelChanged();
     }
 
-    // TODO а что если я поменяю комнату с изменением игры?
-    public void changeRoom(String playerId, String room) {
-        if (room == null) {
+    public void changeRoom(String playerId, String gameName, String newRoom) {
+        if (Validator.isEmpty(newRoom) || Validator.isEmpty(gameName)) {
             return;
         }
         PlayerGame playerGame = get(playerId);
+        if (!playerGame.getPlayer().getGame().equals(gameName)) {
+            return;
+        }
         JSONObject save = playerGame.getGame().getSave();
         Game game = playerGame.getGame();
-        reload(game, room, save);
+        reload(game, newRoom, save);
     }
 
     public PlayerGame get(int index) {

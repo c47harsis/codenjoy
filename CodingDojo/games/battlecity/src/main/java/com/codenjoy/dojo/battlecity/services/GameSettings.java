@@ -52,12 +52,16 @@ public class GameSettings extends SettingsImpl
         SLIPPERINESS("[Game] Value of tank sliding on ice"),
         PENALTY_WALKING_ON_WATER("[Game] Penalty time when walking on water"),
         SHOW_MY_TANK_UNDER_TREE("[Game] Show my tank under tree"),
+        WALL_REGENERATE_TIME("[Game] Wall regenerate time"),
+        TICKS_STUCK_BY_RIVER("[Game] Ticks AI Tank gets stuck by river"),
 
         SPAWN_AI_PRIZE("[Prize] Count spawn for AI Tank with prize"),
         KILL_HITS_AI_PRIZE("[Prize] Hits to kill AI Tank with prize"),
         PRIZE_ON_FIELD("[Prize] The period of prize validity on the field after the appearance"),
         PRIZE_WORKING("[Prize] Working time of the prize after catch up"),
         AI_PRIZE_LIMIT("[Prize] The total number of prize tanks and prizes on the board"),
+        AI_PRIZE_SPRITE_CHANGE_TICKS("[Prize] AI Tank sprite changes every ticks"),
+        PRIZE_SPRITE_CHANGE_TICKS("[Prize] Prize sprite changes every ticks"),
 
         CHANCE_IMMORTALITY("[Chance] Prize immortality"),
         CHANCE_BREAKING_WALLS("[Chance] Prize breaking walls"),
@@ -100,12 +104,16 @@ public class GameSettings extends SettingsImpl
         integer(SLIPPERINESS, 3);
         integer(PENALTY_WALKING_ON_WATER, 2);
         bool(SHOW_MY_TANK_UNDER_TREE, false);
+        integer(WALL_REGENERATE_TIME, 30);
+        integer(TICKS_STUCK_BY_RIVER, 5);
 
         integer(SPAWN_AI_PRIZE, 4);
         integer(KILL_HITS_AI_PRIZE, 3);
         integer(PRIZE_ON_FIELD, 50);
         integer(PRIZE_WORKING, 30);
         integer(AI_PRIZE_LIMIT, 3);
+        integer(AI_PRIZE_SPRITE_CHANGE_TICKS, 4);
+        integer(PRIZE_SPRITE_CHANGE_TICKS, 2);
 
         integer(CHANCE_RESERVED, 30);
         integer(CHANCE_IMMORTALITY, 20);

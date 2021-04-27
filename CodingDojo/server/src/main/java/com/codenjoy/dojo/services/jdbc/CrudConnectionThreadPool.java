@@ -23,18 +23,48 @@ package com.codenjoy.dojo.services.jdbc;
  */
 
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.sql.*;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
+
+@Slf4j
 public class CrudConnectionThreadPool extends ConnectionThreadPool {
 
     public CrudConnectionThreadPool(int count, Supplier<Connection> factory) {
        super(count, factory);
     }
 
+    public void createIndex(String table, boolean unique, boolean cluster, String... columns) {
+        String indexNamePart = Arrays.stream(columns).collect(Collectors.joining("_"));
+        String indexName = String.format("%s_%s_index", indexNamePart, table);
+        String columnsSubquery = Arrays.stream(columns).collect(Collectors.joining(", "));
+        update(String.format("CREATE %s INDEX IF NOT EXISTS %s ON %s (%s);",
+                unique?"UNIQUE":"",
+                indexName,
+                table, columnsSubquery));
+
+        if (cluster) {
+            createCluster(table, indexName);
+        }
+    }
+
+    public void createCluster(String table, String indexName) {
+        update(String.format("ALTER TABLE %s CLUSTER ON %s;",
+                table, indexName));
+    }
+
     public <T> T select(String query, Object[] parameters, ObjectMapper<T> mapper) {
+        if (log.isDebugEnabled()) {
+            log.debug("[SQL] Select query: {} with {}",
+                    query, Arrays.toString(parameters));
+        }
         return run(connection -> {
             try (PreparedStatement stmt = connection.prepareStatement(query)) {
                 for (int index = 0; index < parameters.length; index++) {
@@ -57,6 +87,10 @@ public class CrudConnectionThreadPool extends ConnectionThreadPool {
     }
 
     public int update(String query, Object[] parameters) {
+        if (log.isDebugEnabled()) {
+            log.debug("[SQL] Update query: {} with {}",
+                    query, Arrays.toString(parameters));
+        }
         return run(connection -> {
             try (PreparedStatement stmt = connection.prepareStatement(query)) {
                 for (int index = 0; index < parameters.length; index++) {
@@ -70,6 +104,10 @@ public class CrudConnectionThreadPool extends ConnectionThreadPool {
     }
 
     public <T> int[] batchUpdate(String query, List<T> parameters, ForStmt<T> forStmt) {
+        if (log.isDebugEnabled()) {
+            log.debug("[SQL] Batch update query: {} with {}",
+                    query, parameters.toString());
+        }
         return run(connection -> {
             try (PreparedStatement stmt = connection.prepareStatement(query)) {
                 for (T parameter : parameters) {
@@ -85,6 +123,13 @@ public class CrudConnectionThreadPool extends ConnectionThreadPool {
     }
 
     public List<Object> batch(List<String> queries, List<Object[]> parameters, List<ObjectMapper<?>> mapper) {
+        if (log.isDebugEnabled()) {
+            List<String> params = parameters.stream()
+                    .map(it -> Arrays.toString(it))
+                    .collect(toList());
+            log.debug("[SQL] Batch queries in transaction: {} with {}",
+                    queries.toString(), params.toString());
+        }
         return run(connection -> {
             List<Object> result = new LinkedList<>();
             try {

@@ -93,11 +93,11 @@ public class SemifinalService implements Tickable {
                             .collect(toList());
 
             // единственного героя оставляем и не удаляем
-            if (games.size() <= 1) continue; // TODO потестить
+            if (games.size() <= 1) continue;
 
             // адская формула рассчета индекса разделения списка
             int index = reader.isPercentage()
-                    ? (int)((1D - 1D*reader.getLimit()/100)*games.size())
+                    ? (int)Math.ceil((1D - 1D*reader.getLimit()/100)*(games.size() - 1))
                     : (games.size() - Math.min(reader.getLimit(), games.size()));
 
             // если на границе "отрезания" есть участники с тем же числом очков,
@@ -135,7 +135,7 @@ public class SemifinalService implements Tickable {
         return settings instanceof RoundSettings;
     }
 
-    public SemifinalSettingsImpl semifinalSettings(String room) { // TODO перенести бы их куда-то
+    public SemifinalSettingsImpl semifinalSettings(String room) {
         Settings settings = roomService.settings(room);
         if (isSemifinalAllowed(settings)) {
             return new SemifinalSettingsImpl((SemifinalSettings) settings);
@@ -143,6 +143,13 @@ public class SemifinalService implements Tickable {
             // на админке будет пусто в этой области
             return new SemifinalSettingsImpl(null);
         }
+    }
+
+    public SemifinalStatus getSemifinalStatus(String room) {
+        int current = roomService.getTick(room);
+        SemifinalSettings settings = semifinalSettings(room);
+        int countPlayers = playerGames.getPlayersByRoom(room).size();
+        return new SemifinalStatus(current, countPlayers, settings);
     }
 
     public RoundSettingsImpl roundSettings(String room) { // TODO перенести бы их куда-то

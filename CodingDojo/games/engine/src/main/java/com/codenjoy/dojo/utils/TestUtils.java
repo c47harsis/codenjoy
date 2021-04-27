@@ -35,11 +35,15 @@ import com.codenjoy.dojo.services.multiplayer.Single;
 import com.codenjoy.dojo.services.printer.CharElements;
 import com.codenjoy.dojo.services.printer.PrinterFactory;
 import com.codenjoy.dojo.services.settings.Settings;
+import com.codenjoy.dojo.utils.events.MockitoJunitTesting;
+import com.codenjoy.dojo.utils.events.Testing;
 import lombok.experimental.UtilityClass;
 
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
+
+import static com.codenjoy.dojo.services.PointImpl.pt;
 
 import static com.codenjoy.dojo.services.PointImpl.pt;
 
@@ -47,6 +51,8 @@ import static com.codenjoy.dojo.services.PointImpl.pt;
 public class TestUtils {
 
     public static final int COUNT_NUMBERS = 3;
+
+    private static Testing TESTING = null;
 
     public static String injectN(String expected) {
         int size = (int) Math.sqrt(expected.length());
@@ -67,9 +73,22 @@ public class TestUtils {
         return result.toString();
     }
 
-    public static Game  buildGame(GameType gameType, EventListener listener, PrinterFactory factory) {
+    public static List<Game> getGames(int players, GameType runner, PrinterFactory factory, Supplier<EventListener> listener) {
+        GameField field = TestUtils.buildField(runner);
+        List<Game> games = new LinkedList<>();
+        for (int i = 0; i < players; i++) {
+            games.add(TestUtils.buildSingle(runner, field, listener.get(), factory));
+        }
+        return games;
+    }
+
+    public static Game buildGame(GameType gameType, EventListener listener, PrinterFactory factory) {
+        GameField gameField = buildField(gameType);
+        return buildSingle(gameType, gameField, listener, factory);
+    }
+
+    public static Game buildSingle(GameType gameType, GameField gameField, EventListener listener, PrinterFactory factory) {
         Settings settings = gameType.getSettings();
-        GameField gameField = gameType.createGame(LevelProgress.levelsStartsFrom1, settings);
         GamePlayer gamePlayer = gameType.createPlayer(listener, null, settings);
         Game game = new Single(gamePlayer, factory);
         game.on(gameField);
@@ -152,9 +171,9 @@ public class TestUtils {
     }
 
     public static String drawShortestWay(Point from,
-                                        List<Direction> shortestWay,
-                                        int size,
-                                        Function<Point, Character> getAt)
+                                         List<Direction> shortestWay,
+                                         int size,
+                                         Function<Point, Character> getAt)
     {
         Map<Point, List<Direction>> map = new HashMap<>();
 
@@ -178,6 +197,11 @@ public class TestUtils {
         }
 
         return buffer.toString();
+    }
+
+    public static GameField buildField(GameType gameType) {
+        Settings settings = gameType.getSettings();
+        return gameType.createGame(LevelProgress.levelsStartsFrom1, settings);
     }
 
     public static String printWay(String expected,
@@ -213,26 +237,33 @@ public class TestUtils {
      * проверяем порционно, потому что в 'mvn test'
      * не видно на больших данных, где именно отличие и это проблема в отладке
      * @param allFirst true - если проверяем все сразу, false - если сперва порционно тик за тиком
-     * @param assertor так как assertEquals нельзя использовать в prod code, а этот класс нельзя переместить в test и затянуть потом как дупенденси, тут лямбда )
      * @param expectedAll что должно быть
      * @param actualAll что реально пришло
      */
-    public static void assertSmoke(boolean allFirst, BiConsumer<Object, Object> assertor, String expectedAll, String actualAll) {
+    public static void assertSmoke(boolean allFirst, String expectedAll, String actualAll) {
         String[] expected = expectedAll.split(LocalGameRunner.SEP);
         String[] actual = actualAll.split(LocalGameRunner.SEP);
 
         if (allFirst) {
-            assertor.accept(expectedAll, actualAll);
+            assertEquals(expectedAll, actualAll);
         }
 
         for (int i = 0; i < Math.min(expected.length, actual.length); i++) {
-            assertor.accept(expected[i], actual[i]);
+            assertEquals(expected[i], actual[i]);
         }
-        assertor.accept(expected.length, actual.length);
+        assertEquals(expected.length, actual.length);
 
         if (!allFirst) {
-            assertor.accept(expectedAll, actualAll);
+            assertEquals(expectedAll, actualAll);
         }
+    }
+
+    private static void assertEquals(Object o1, Object o2) {
+        if (TESTING == null) {
+            // это тут потому что статика пытается сразу загрузить классы, которых нет
+            TESTING = new MockitoJunitTesting();
+        }
+        TESTING.assertEquals(o1, o2);
     }
 
 }

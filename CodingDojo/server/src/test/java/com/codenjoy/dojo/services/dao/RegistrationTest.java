@@ -34,17 +34,13 @@ import org.junit.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 import static com.codenjoy.dojo.services.TestUtils.assertUsersEqual;
 import static com.codenjoy.dojo.services.security.GameAuthorities.ADMIN;
 import static com.codenjoy.dojo.services.security.GameAuthorities.USER;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -120,8 +116,7 @@ public class RegistrationTest {
             fail("Expected exception");
         } catch (Exception e) {
             // then
-            assertEquals("java.util.concurrent.ExecutionException: " +
-                    "org.springframework.security.core.userdetails.UsernameNotFoundException: " +
+            assertEquals("org.springframework.security.core.userdetails.UsernameNotFoundException: " +
                     "User with code 'bad_code' does not exist", e.toString());
         }
     }
@@ -251,6 +246,30 @@ public class RegistrationTest {
 
         // then
         assertUsersEqual(expectedUser1.setReadableName("updatedName1"), actualUser1, "pass1", PASSWORD_ENCODER);
+        assertUsersEqual(expectedUser2, actualUser2, "pass2", PASSWORD_ENCODER);
+    }
+
+    @Test
+    public void shouldUpdateEmail() {
+        // given
+        String code1 = registration.register("id1", "email1", "name1", "pass1", "someData1", USER.roles()).getCode();
+        String code2 = registration.register("id2", "email2", "name2", "pass2", "someData2", USER.roles()).getCode();
+
+        Registration.User expectedUser1 = new Registration.User("id1", "email1", "name1", 0, "pass1", code1, "someData1", USER.roles());
+        Registration.User expectedUser2 = new Registration.User("id2", "email2", "name2", 0, "pass2", code2, "someData2", USER.roles());
+
+        Registration.User actualUser1 = registration.getUserByCode(code1);
+        Registration.User actualUser2 = registration.getUserByCode(code2);
+
+        assertUsersEqual(expectedUser1, actualUser1, "pass1", PASSWORD_ENCODER);
+        assertUsersEqual(expectedUser2, actualUser2, "pass2", PASSWORD_ENCODER);
+
+        // when
+        registration.updateEmail("id1", "updatedEmail1");
+        actualUser1 = registration.getUserByCode(code1);
+
+        // then
+        assertUsersEqual(expectedUser1.setEmail("updatedEmail1"), actualUser1, "pass1", PASSWORD_ENCODER);
         assertUsersEqual(expectedUser2, actualUser2, "pass2", PASSWORD_ENCODER);
     }
 
@@ -419,11 +438,72 @@ public class RegistrationTest {
         registration.removeAll();
 
         // then
-        assertEquals("[admin3, admin4]", registration.getUsers()
-                            .stream()
-                            .map(Registration.User::getName)
-                            .collect(toList())
+        assertUsers("[admin3, admin4]");
+    }
+
+    public void assertUsers(String expected) {
+        assertEquals(expected,
+                registration.getUsers().stream()
+                        .map(Registration.User::getName)
+                        .collect(toList())
                         .toString());
+    }
+
+    @Test
+    public void shouldGetUsers() {
+        // given
+        String code1 = registration.register("id1", "email1", "name1", "pass1", "someData1", USER.roles()).getCode();
+        String code2 = registration.register("id2", "email2", "name2", "pass2", "someData2", USER.roles()).getCode();
+        String code3 = registration.register("id3", "email3", "name3", "pass3", "someData3", USER.roles()).getCode();
+        String code4 = registration.register("admin4", "email4", "name4", "pass4", "someData4", ADMIN.roles()).getCode();
+        String code5 = registration.register("admin5", "email5", "name5", "pass5", "someData5", ADMIN.roles()).getCode();
+
+        // when
+        List<Registration.User> users = registration.getUsers();
+
+        // then
+        assertEquals("[Registration.User(email=email1, id=id1, readableName=name1, approved=0, code=4877982059660098880, data=someData1), \n" +
+                        "Registration.User(email=email2, id=id2, readableName=name2, approved=0, code=9205595962804372348, data=someData2), \n" +
+                        "Registration.User(email=email3, id=id3, readableName=name3, approved=0, code=8196566518765037475, data=someData3), \n" +
+                        "Registration.User(email=email4, id=admin4, readableName=name4, approved=0, code=1050143549617564675, data=someData4), \n" +
+                        "Registration.User(email=email5, id=admin5, readableName=name5, approved=0, code=8742437141300845912, data=someData5)]",
+                users.toString().replace(", Registration", ", \nRegistration"));
+    }
+
+    @Test
+    public void shouldGetUsers_byIds() {
+        // given
+        String code1 = registration.register("id1", "email1", "name1", "pass1", "someData1", USER.roles()).getCode();
+        String code2 = registration.register("id2", "email2", "name2", "pass2", "someData2", USER.roles()).getCode();
+        String code3 = registration.register("id3", "email3", "name3", "pass3", "someData3", USER.roles()).getCode();
+        String code4 = registration.register("admin4", "email4", "name4", "pass4", "someData4", ADMIN.roles()).getCode();
+        String code5 = registration.register("admin5", "email5", "name5", "pass5", "someData5", ADMIN.roles()).getCode();
+
+        // when
+        List<Registration.User> users = registration.getUsers(Arrays.asList("id1", "id3", "admin5"));
+
+        // then
+        assertEquals("[Registration.User(email=email1, id=id1, readableName=name1, approved=0, code=4877982059660098880, data=someData1), \n" +
+                        "Registration.User(email=email3, id=id3, readableName=name3, approved=0, code=8196566518765037475, data=someData3), \n" +
+                        "Registration.User(email=email5, id=admin5, readableName=name5, approved=0, code=8742437141300845912, data=someData5)]",
+                users.toString().replace(", Registration", ", \nRegistration"));
+    }
+
+    @Test
+    public void shouldNotRemoveAdmins_whenRemove() {
+        // given
+        String code1 = registration.register("id1", "email1", "name1", "pass1", "someData1", USER.roles()).getCode();
+        String code2 = registration.register("id2", "email2", "name2", "pass2", "someData2", USER.roles()).getCode();
+        String code3 = registration.register("id3", "email3", "name3", "pass3", "someData3", USER.roles()).getCode();
+        String code4 = registration.register("admin4", "email4", "name4", "pass4", "someData4", ADMIN.roles()).getCode();
+        String code5 = registration.register("admin5", "email5", "name5", "pass5", "someData5", ADMIN.roles()).getCode();
+
+        // when
+        registration.remove("id2");
+        registration.remove("admin4");
+
+        // then
+        assertUsers("[id1, id3, admin4, admin5]");
     }
 
     @Test

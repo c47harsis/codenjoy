@@ -33,11 +33,12 @@ import com.codenjoy.dojo.snakebattle.model.level.LevelImpl;
 import com.codenjoy.dojo.snakebattle.services.Events;
 import com.codenjoy.dojo.snakebattle.services.GameSettings;
 import com.codenjoy.dojo.utils.TestUtils;
+import com.codenjoy.dojo.utils.events.EventsListenersAssert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.exceptions.verification.NeverWantedButInvoked;
 import org.mockito.stubbing.OngoingStubbing;
+
+import java.util.Arrays;
 
 import static com.codenjoy.dojo.services.round.RoundSettings.Keys.*;
 import static org.junit.Assert.assertEquals;
@@ -59,16 +60,19 @@ public class MultiplayerTest {
     private EventListener enemyEvents;
     private Player enemyPlayer;
 
-    private PrinterFactory printer = new PrinterFactoryImpl();
+    private PrinterFactory printer;
+    private EventsListenersAssert events;
 
     private GameSettings settings;
 
     @Before
     public void setup() {
         dice = mock(Dice.class);
-
         settings = new TestGameSettings()
                 .integer(ROUNDS_MIN_TICKS_FOR_WIN, 1);
+
+        printer = new PrinterFactoryImpl();
+        events = new EventsListenersAssert(() -> Arrays.asList(heroEvents, enemyEvents), Events.class);
     }
 
     private void dice(int... values) {
@@ -104,7 +108,7 @@ public class MultiplayerTest {
 
     // проверяем что соперник отображается на карте
     @Test
-    public void shouldheroWithEnemyOnField() {
+    public void shouldHeroWithEnemyOnField() {
         givenFl("☼☼☼☼☼☼☼" +
                 "☼     ☼" +
                 "☼ ╘►  ☼" +
@@ -172,6 +176,53 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼");
     }
 
+    // если режим игры не rounds а multiple то змеи активны сразу
+    @Test
+    public void shouldNotSleepingSnake_whenGameIsMultiplayer() {
+        // given
+        settings.bool(ROUNDS_ENABLED, false);
+
+        givenFl("☼☼☼☼☼☼☼" +
+                "☼     ☼" +
+                "☼ ╘►  ☼" +
+                "☼     ☼" +
+                "☼ ×>  ☼" +
+                "☼     ☼" +
+                "☼☼☼☼☼☼☼");
+
+        // then
+        hero.setActive(true);
+        enemy.setActive(true);
+
+        assertH("☼☼☼☼☼☼☼" +
+                "☼     ☼" +
+                "☼ ╘►  ☼" +
+                "☼     ☼" +
+                "☼ ×>  ☼" +
+                "☼     ☼" +
+                "☼☼☼☼☼☼☼");
+
+        assertE("☼☼☼☼☼☼☼" +
+                "☼     ☼" +
+                "☼ ×>  ☼" +
+                "☼     ☼" +
+                "☼ ╘►  ☼" +
+                "☼     ☼" +
+                "☼☼☼☼☼☼☼");
+
+        // when
+        game.tick();
+
+        // then
+        assertH("☼☼☼☼☼☼☼" +
+                "☼     ☼" +
+                "☼  ╘► ☼" +
+                "☼     ☼" +
+                "☼  ×> ☼" +
+                "☼     ☼" +
+                "☼☼☼☼☼☼☼");
+    }
+
     // проверяем что обе змейки умирают, когда врезаются в равного соперника
     // и получаем оповещение о смерти
     @Test
@@ -188,8 +239,8 @@ public class MultiplayerTest {
         enemy.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼" +
                 "☼     ☼" +
@@ -259,8 +310,8 @@ public class MultiplayerTest {
         enemy.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[2], WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[2], WIN]");
 
         assertH("☼☼☼☼☼☼☼" +
                 "☼     ☼" +
@@ -354,8 +405,8 @@ public class MultiplayerTest {
                 "☼     ☼" +
                 "☼☼☼☼☼☼☼");
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[DIE]");
         game.tick();
 
         assertH("☼☼☼☼☼☼☼" +
@@ -422,8 +473,8 @@ public class MultiplayerTest {
                 "☼     ☼" +
                 "☼☼☼☼☼☼☼");
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         game.tick();
 
@@ -478,8 +529,8 @@ public class MultiplayerTest {
         enemy.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[EAT[3], WIN]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[EAT[3], WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -554,8 +605,8 @@ public class MultiplayerTest {
         enemy.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼" +
                 "☼     ☼" +
@@ -643,8 +694,8 @@ public class MultiplayerTest {
                 "☼      ☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[3], WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[3], WIN]");
 
         game.tick();
 
@@ -697,8 +748,8 @@ public class MultiplayerTest {
         hero.down();
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼" +
                 "☼     ☼" +
@@ -841,8 +892,8 @@ public class MultiplayerTest {
         game.tick();
         game.tick();
 
-        verifyEvents(heroEvents, "[FURY]");
-        verifyEvents(enemyEvents, "[APPLE, APPLE]");
+        events.verifyEvents(heroEvents, "[FURY]");
+        events.verifyEvents(enemyEvents, "[APPLE, APPLE]");
 
         hero.down();
         enemy.up();
@@ -856,8 +907,8 @@ public class MultiplayerTest {
                 "☼     ☼" +
                 "☼☼☼☼☼☼☼");
 
-        verifyEvents(heroEvents, "[EAT[4], WIN]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[EAT[4], WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         game.tick();
 
@@ -886,10 +937,10 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼");
 
         game.tick();
-        verifyEvents(heroEvents, "[APPLE]");
+        events.verifyEvents(heroEvents, "[APPLE]");
         enemy.up();
         game.tick();
-        verifyEvents(heroEvents, "[APPLE]");
+        events.verifyEvents(heroEvents, "[APPLE]");
         game.tick();
 
         assertH("☼☼☼☼☼☼☼" +
@@ -968,8 +1019,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(enemyEvents, "[DIE]");
-        verifyEvents(heroEvents, "[WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[WIN]");
 
         assertH("☼☼☼☼☼☼☼" +
                 "☼     ☼" +
@@ -1043,8 +1094,8 @@ public class MultiplayerTest {
         game.remove(heroPlayer);
         game.tick();
 
-        verifyEvents(enemyEvents, "[WIN]");
-        verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
 
 
         assertH("☼☼☼☼☼☼☼" +
@@ -1101,23 +1152,23 @@ public class MultiplayerTest {
         // ждем 4 тика
         game.tick();
 
-        verifyEvents(heroEvents, "[[...3...]]");
-        verifyEvents(enemyEvents, "[[...3...]]");
+        events.verifyEvents(heroEvents, "[[...3...]]");
+        events.verifyEvents(enemyEvents, "[[...3...]]");
 
         game.tick();
 
-        verifyEvents(heroEvents, "[[..2..]]");
-        verifyEvents(enemyEvents, "[[..2..]]");
+        events.verifyEvents(heroEvents, "[[..2..]]");
+        events.verifyEvents(enemyEvents, "[[..2..]]");
 
         game.tick();
 
-        verifyEvents(heroEvents, "[[.1.]]");
-        verifyEvents(enemyEvents, "[[.1.]]");
+        events.verifyEvents(heroEvents, "[[.1.]]");
+        events.verifyEvents(enemyEvents, "[[.1.]]");
 
         game.tick();
 
-        verifyEvents(heroEvents, "[START, [Round 1]]");
-        verifyEvents(enemyEvents, "[START, [Round 1]]");
+        events.verifyEvents(heroEvents, "[START, [Round 1]]");
+        events.verifyEvents(enemyEvents, "[START, [Round 1]]");
 
         assertH("☼☼☼☼☼☼☼" +
                 "☼     ☼" +
@@ -1188,8 +1239,8 @@ public class MultiplayerTest {
         assertEquals(true, enemyPlayer.isAlive());
         assertEquals(true, enemyPlayer.isActive());
 
-        verifyEvents(heroEvents, "[START, [Round 1]]");
-        verifyEvents(enemyEvents, "[START, [Round 1]]");
+        events.verifyEvents(heroEvents, "[START, [Round 1]]");
+        events.verifyEvents(enemyEvents, "[START, [Round 1]]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼☼     ☼" +
@@ -1211,8 +1262,8 @@ public class MultiplayerTest {
                 "☼☼     ☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[WIN]");
         verifyNoMoreInteractions(heroEvents, enemyEvents);
         reset(heroEvents, enemyEvents);
 
@@ -1268,8 +1319,8 @@ public class MultiplayerTest {
         assertEquals(true, enemyPlayer.isAlive());
         assertEquals(true, enemyPlayer.isActive());
 
-        verifyEvents(heroEvents, "[START, [Round 2]]");
-        verifyEvents(enemyEvents, "[START, [Round 2]]");
+        events.verifyEvents(heroEvents, "[START, [Round 2]]");
+        events.verifyEvents(enemyEvents, "[START, [Round 2]]");
 
         assertEquals(true, heroPlayer.isActive());
         assertEquals(true, enemyPlayer.isActive());
@@ -1299,8 +1350,8 @@ public class MultiplayerTest {
                 "☼☼     ☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[DIE]");
         verifyNoMoreInteractions(heroEvents, enemyEvents);
         reset(heroEvents, enemyEvents);
 
@@ -1342,8 +1393,8 @@ public class MultiplayerTest {
         assertEquals(true, enemyPlayer.isAlive());
         assertEquals(true, enemyPlayer.isActive());
 
-        verifyEvents(heroEvents, "[START, [Round 3]]");
-        verifyEvents(enemyEvents, "[START, [Round 3]]");
+        events.verifyEvents(heroEvents, "[START, [Round 3]]");
+        events.verifyEvents(enemyEvents, "[START, [Round 3]]");
 
         assertEquals(true, heroPlayer.isActive());
         assertEquals(true, enemyPlayer.isActive());
@@ -1395,8 +1446,8 @@ public class MultiplayerTest {
                 "☼☼     ☼" +
                 "☼☼☼☼☼☼☼☼");
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[DIE]");
         verifyNoMoreInteractions(heroEvents, enemyEvents);
         reset(heroEvents, enemyEvents);
 
@@ -1442,12 +1493,12 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼☼");
 
         game.tick();
-        verifyEvents(enemyEvents, "[FURY]");
+        events.verifyEvents(enemyEvents, "[FURY]");
 
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[3], WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[3], WIN]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -1523,12 +1574,12 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼☼");
 
         game.tick();
-        verifyEvents(enemyEvents, "[FURY]");
+        events.verifyEvents(enemyEvents, "[FURY]");
 
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[3], WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[3], WIN]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -1603,7 +1654,7 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(enemyEvents, "[FURY]");
+        events.verifyEvents(enemyEvents, "[FURY]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -1626,8 +1677,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[]");
-        verifyEvents(enemyEvents, "[EAT[1]]");
+        events.verifyEvents(heroEvents, "[]");
+        events.verifyEvents(enemyEvents, "[EAT[1]]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -1708,7 +1759,7 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(enemyEvents, "[FURY]");
+        events.verifyEvents(enemyEvents, "[FURY]");
 
         assertH("☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼╔══════╗☼\n" +
@@ -1735,8 +1786,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[]");
-        verifyEvents(enemyEvents, "[EAT[27]]");
+        events.verifyEvents(heroEvents, "[]");
+        events.verifyEvents(enemyEvents, "[EAT[27]]");
 
         assertH("☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼        ☼\n" +
@@ -1802,7 +1853,7 @@ public class MultiplayerTest {
                 "☼☼☼☼☼☼☼☼");
 
         game.tick();
-        verifyEvents(heroEvents, "[FLYING]");
+        events.verifyEvents(heroEvents, "[FLYING]");
 
         hero.up();
         game.tick();
@@ -1829,8 +1880,8 @@ public class MultiplayerTest {
         hero.act(0);
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[WIN]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼○○    ☼" +
@@ -1870,8 +1921,8 @@ public class MultiplayerTest {
         hero.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[4], WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[4], WIN]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼┌─ö   ☼" +
@@ -1915,26 +1966,6 @@ public class MultiplayerTest {
         verifyNoMoreInteractions(enemyEvents);
     }
 
-    // TODO ###223 сделать так же как в bomberman/battlecity EventsListenersAssert
-    public static void verifyEvents(EventListener events, String expected) {
-        if (expected.equals("[]")) {
-            try {
-                verify(events, never()).event(any(Events.class));
-            } catch (NeverWantedButInvoked e) {
-                assertEquals(expected, getEvents(events));
-            }
-        } else {
-            assertEquals(expected, getEvents(events));
-        }
-        reset(events);
-    }
-
-    private static String getEvents(EventListener events) {
-        ArgumentCaptor<Events> captor = ArgumentCaptor.forClass(Events.class);
-        verify(events, atLeast(1)).event(captor.capture());
-        return captor.getAllValues().toString();
-    }
-
     @Test
     public void shouldCase6_2() {
         givenFl("☼☼☼☼☼☼☼☼" +
@@ -1950,8 +1981,8 @@ public class MultiplayerTest {
         enemy.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[EAT[4], WIN]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[EAT[4], WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼╔═╕   ☼" +
@@ -2010,8 +2041,8 @@ public class MultiplayerTest {
         hero.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[EAT[4], WIN]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[EAT[4], WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -2069,8 +2100,8 @@ public class MultiplayerTest {
         hero.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[4], WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[4], WIN]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼┌─ö   ☼" +
@@ -2129,8 +2160,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[5], FURY, WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[5], FURY, WIN]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼┌─ö   ☼" +
@@ -2190,8 +2221,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[EAT[5], FURY, WIN]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[EAT[5], FURY, WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼╔═╕   ☼" +
@@ -2251,8 +2282,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[5], APPLE, WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[5], APPLE, WIN]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼┌─┐   ☼" +
@@ -2311,8 +2342,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[EAT[5], APPLE, WIN]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[EAT[5], APPLE, WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼╔═╗   ☼" +
@@ -2372,8 +2403,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[2], STONE, WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[2], STONE, WIN]");
 
         // несмотря на то что на сервере столкновение обрабатывается до съедения камня,
         // съедение камня приводит к мгновенной утрате длинны (на 3),
@@ -2436,8 +2467,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[EAT[2], STONE, WIN]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[EAT[2], STONE, WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -2498,7 +2529,7 @@ public class MultiplayerTest {
         hero.right();
         game.tick();
 
-        verifyEvents(enemyEvents, "[FURY]");
+        events.verifyEvents(enemyEvents, "[FURY]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -2520,8 +2551,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[APPLE]");
-        verifyEvents(enemyEvents, "[EAT[1]]");
+        events.verifyEvents(heroEvents, "[APPLE]");
+        events.verifyEvents(enemyEvents, "[EAT[1]]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -2580,8 +2611,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[APPLE, EAT[2], WIN]");
-        verifyEvents(enemyEvents, "[DIE]");
+        events.verifyEvents(heroEvents, "[APPLE, EAT[2], WIN]");
+        events.verifyEvents(enemyEvents, "[DIE]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼      ☼" +
@@ -2857,8 +2888,8 @@ public class MultiplayerTest {
         hero.up();
         game.tick();
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[4]]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[4]]");
 
         assertH("☼☼☼☼☼☼☼☼" +
                 "☼┌─ö   ☼" +
@@ -3053,8 +3084,8 @@ public class MultiplayerTest {
                 "☼☼                           ☼\n" +
                 "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n");
 
-        verifyEvents(heroEvents, "[]");
-        verifyEvents(enemyEvents, "[APPLE]");
+        events.verifyEvents(heroEvents, "[]");
+        events.verifyEvents(enemyEvents, "[APPLE]");
     }
 
     // с таблеткой ярости я отгрызаю хвосты,
@@ -3129,8 +3160,8 @@ public class MultiplayerTest {
         enemy.down();
         game.tick();
 
-        verifyEvents(heroEvents, "[EAT[2], EAT[1]]");
-        verifyEvents(enemyEvents, "[APPLE]");
+        events.verifyEvents(heroEvents, "[EAT[2], EAT[1]]");
+        events.verifyEvents(enemyEvents, "[APPLE]");
 
         assertH("☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼☼                           ☼\n" +
@@ -3165,8 +3196,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[]");
-        verifyEvents(enemyEvents, "[]");
+        events.verifyEvents(heroEvents, "[]");
+        events.verifyEvents(enemyEvents, "[]");
 
         assertH("☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼☼                           ☼\n" +
@@ -3307,8 +3338,8 @@ public class MultiplayerTest {
 
         game.tick();
 
-        verifyEvents(heroEvents, "[]");
-        verifyEvents(enemyEvents, "[APPLE]");
+        events.verifyEvents(heroEvents, "[]");
+        events.verifyEvents(enemyEvents, "[APPLE]");
 
         assertH("☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n" +
                 "☼☼                           ☼\n" +
@@ -3384,8 +3415,8 @@ public class MultiplayerTest {
                 "☼☼                           ☼\n" +
                 "☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼☼\n");
 
-        verifyEvents(heroEvents, "[DIE]");
-        verifyEvents(enemyEvents, "[EAT[10], WIN]");
+        events.verifyEvents(heroEvents, "[DIE]");
+        events.verifyEvents(enemyEvents, "[EAT[10], WIN]");
 
     }
 

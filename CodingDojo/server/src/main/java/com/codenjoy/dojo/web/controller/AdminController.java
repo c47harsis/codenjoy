@@ -89,6 +89,7 @@ public class AdminController {
         saveService.load(id, getGameName(request), getGameRoom(request), save);
         return "redirect:/board/player/" + id;
     }
+
     // используется как rest для апдейта полей конкретного player на admin page
     @PostMapping("/user/info")
     public @ResponseBody String update(@RequestBody Player player) {
@@ -538,7 +539,7 @@ public class AdminController {
         model.addAttribute("generateCount", "30");
         model.addAttribute("generateRoom", room);
         model.addAttribute("timerPeriod", timerService.getPeriod());
-        model.addAttribute("defaultProgress", getDefaultProgress(gameType));
+        model.addAttribute("defaultProgress", gameService.getDefaultProgress(gameType));
         model.addAttribute("active", roomService.isActive(room));
         model.addAttribute("roomOpened", roomService.isOpened(room));
         model.addAttribute("recording", actionLogger.isWorking());
@@ -547,18 +548,12 @@ public class AdminController {
         model.addAttribute("opened", playerService.isRegistrationOpened());
         AdminSettings settings = getAdminSettings(parameters, room);
         model.addAttribute("adminSettings", settings);
-        List<PlayerInfo> saves = saveService.getSaves();
+        List<PlayerInfo> saves = saveService.getSaves(room);
         model.addAttribute("gameRooms", roomService.gameRooms());
-        model.addAttribute("playersCount", getRoomCounts(saves));
+        model.addAttribute("playersCount", playerService.getRoomCounts());
         settings.setPlayers(preparePlayers(model, room, saves));
 
         return "admin";
-    }
-
-    public String getDefaultProgress(GameType game) {
-        MultiplayerType type = game.getMultiplayerType(game.getSettings());
-        JSONObject save = type.progress().saveTo(new JSONObject());
-        return save.toString().replace('"', '\'');
     }
 
     public AdminSettings getAdminSettings(List<Parameter> parameters, String room) {
@@ -608,18 +603,6 @@ public class AdminController {
             model.addAttribute("players", players);
         }
         return players;
-    }
-
-    private Map<String, Integer> getRoomCounts(List<PlayerInfo> players) {
-        return roomService.names().stream()
-                .map(room -> new HashMap.SimpleEntry<>(room, count(players, room)))
-                .collect(toMap(entry -> entry.getKey(), entry -> entry.getValue()));
-    }
-
-    private int count(List<PlayerInfo> players, String room) {
-        return (int) players.stream()
-                .filter(player -> room.equals(player.getRoom()))
-                .count();
     }
 
     // ----------------

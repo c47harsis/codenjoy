@@ -66,6 +66,7 @@ public class SmokeTest {
                     @Override
                     public GameSettings getSettings() {
                         return super.getSettings()
+                                .bool(CHEATS, true)
                                 .integer(PERK_ACTIVITY, 10)
                                 .integer(PERK_AVAILABILITY, 10)
                                 .integer(PERK_DROP_RATIO, 100)
@@ -100,8 +101,7 @@ public class SmokeTest {
                     }
                 },
                 Arrays.asList(new AISolver(dice), new AISolver(dice), ai, ai, ai),
-                Arrays.asList(new Board(), new Board(), new Board(), new Board(), new Board()),
-                (o1, o2) -> assertEquals(o1, o2));
+                Arrays.asList(new Board(), new Board(), new Board(), new Board(), new Board()));
     }
 
     public Solver getDummySolver(Dice dice) {

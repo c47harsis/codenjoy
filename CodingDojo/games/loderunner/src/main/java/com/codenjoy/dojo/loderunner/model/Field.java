@@ -25,11 +25,12 @@ package com.codenjoy.dojo.loderunner.model;
 
 import com.codenjoy.dojo.loderunner.model.Pill.PillType;
 import com.codenjoy.dojo.services.Point;
-import com.codenjoy.dojo.services.multiplayer.GameField;
+import com.codenjoy.dojo.services.round.RoundGameField;
+
 import java.util.List;
 import java.util.Optional;
 
-public interface Field extends GameField<Player> {
+public interface Field extends RoundGameField<Player> {
 
     boolean isBarrier(Point pt);
 
@@ -55,19 +56,21 @@ public interface Field extends GameField<Player> {
 
     void leaveGold(Point pt, Class<? extends Point> clazz);
 
-    void leavePill(Point pt, PillType pill);
-
-    void leavePortal(Point pt);
-
     boolean under(Point pt, PillType pill);
 
     int size();
 
     boolean isBorder(Point pt);
 
-    List<Hero> getHeroes();
+    List<Hero> activeHeroes();
+
+    List<Hero> allHeroes();
 
     void suicide(Hero hero);
 
     List<Brick> bricks();
+
+    List<Hero> visibleHeroes();
+
+    List<Enemy> enemies();
 }

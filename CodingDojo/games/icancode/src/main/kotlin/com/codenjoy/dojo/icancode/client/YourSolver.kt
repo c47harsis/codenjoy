@@ -30,13 +30,7 @@ import com.codenjoy.dojo.services.RandomDice
 /**
  * Your AI
  */
-class YourKotlinSolver : AbstractSolver {
-
-    constructor(dice: Dice) : super(dice) {
-        this.dice = dice;
-    }
-
-    constructor() : super(null)
+class YourKotlinSolver(dice: Dice?) : AbstractSolver(dice) {
 
     override fun whatToDo(board: Board): Command {
         with(board) {

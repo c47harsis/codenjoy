@@ -33,13 +33,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.stubbing.Answer;
+import org.mockito.stubbing.Stubber;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static com.codenjoy.dojo.services.PlayerSave.NULL;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -51,7 +50,9 @@ public class SaveServiceImplTest {
     private PlayerService playerService;
     private PlayerGames playerGames;
     private GameSaver saver;
+    private TimeService time;
 
+    private List<Registration.User> users;
     private List<Player> players;
     private List<GameField> fields;
     public static final boolean NOT_REGISTERED = false;
@@ -63,8 +64,10 @@ public class SaveServiceImplTest {
             this.players = SaveServiceImplTest.this.playerService = mock(PlayerService.class);
             this.saver = SaveServiceImplTest.this.saver = mock(GameSaver.class);
             this.registration = SaveServiceImplTest.this.registration = mock(Registration.class);
+            this.time = SaveServiceImplTest.this.time = spy(TimeService.class);
         }};
 
+        users = new LinkedList<>();
         players = new LinkedList<>();
         fields = new LinkedList<>();
 
@@ -98,6 +101,8 @@ public class SaveServiceImplTest {
         when(player.getRoom()).thenReturn(room);
         when(player.hasAi()).thenReturn(true);
         when(player.getCallbackUrl()).thenReturn("http://" + id + ":1234");
+        when(player.getEmail()).thenReturn(null);        // берется из registration
+        when(player.getReadableName()).thenReturn(null); // берется из registration
         when(player.getEventListener()).thenReturn(mock(InformationCollector.class));
         when(playerService.get(id)).thenReturn(player);
         players.add(player);
@@ -295,6 +300,7 @@ public class SaveServiceImplTest {
         assertEquals("active", active.getId());
         assertEquals("code_active", active.getCode());
         assertEquals("readable_active", active.getReadableName());
+        assertEquals("active@email.com", active.getEmail());
         assertEquals("http://active:1234", active.getCallbackUrl());
         assertEquals("game room", active.getGame());
         assertEquals("{\"data\":2}", active.getData());
@@ -307,6 +313,7 @@ public class SaveServiceImplTest {
         assertEquals("activeSaved", activeSaved.getId());
         assertEquals("code_activeSaved", activeSaved.getCode());
         assertEquals("readable_activeSaved", activeSaved.getReadableName());
+        assertEquals("activeSaved@email.com", activeSaved.getEmail());
         assertEquals("http://activeSaved:1234", activeSaved.getCallbackUrl());
         assertEquals("game room", activeSaved.getGame());
         assertEquals("{\"data\":1}", activeSaved.getData());
@@ -319,6 +326,7 @@ public class SaveServiceImplTest {
         assertEquals("saved", saved.getId());
         assertEquals("code_saved", saved.getCode());
         assertEquals("readable_saved", saved.getReadableName());
+        assertEquals("saved@email.com", saved.getEmail());
         assertEquals("http://saved:1234", saved.getCallbackUrl());
         assertEquals("saved game room", saved.getGame());
         assertNull(saved.getData());
@@ -385,6 +393,7 @@ public class SaveServiceImplTest {
         assertEquals("active", active.getId());
         assertEquals("code_active", active.getCode());
         assertEquals("readable_active", active.getReadableName());
+        assertEquals("active@email.com", active.getEmail());
         assertEquals("http://active:1234", active.getCallbackUrl());
         assertEquals("game room", active.getGame());
         assertEquals("{\"data\":2}", active.getData());
@@ -397,6 +406,7 @@ public class SaveServiceImplTest {
         assertEquals("activeSaved", activeSaved.getId());
         assertEquals("code_activeSaved", activeSaved.getCode());
         assertEquals("readable_activeSaved", activeSaved.getReadableName());
+        assertEquals("activeSaved@email.com", activeSaved.getEmail());
         assertEquals("http://activeSaved:1234", activeSaved.getCallbackUrl());
         assertEquals("game room", activeSaved.getGame());
         assertEquals("{\"data\":1}", activeSaved.getData());
@@ -409,6 +419,7 @@ public class SaveServiceImplTest {
         assertEquals("saved", saved.getId());
         assertEquals("code_saved", saved.getCode());
         assertEquals("readable_saved", saved.getReadableName());
+        assertEquals("saved@email.com", saved.getEmail());
         assertEquals("http://saved:1234", saved.getCallbackUrl());
         assertEquals("saved game room", saved.getGame());
         assertNull(saved.getData());
@@ -431,6 +442,7 @@ public class SaveServiceImplTest {
         assertEquals("activeInOtherRoom", active.getId());
         assertEquals("code_activeInOtherRoom", active.getCode());
         assertEquals("readable_activeInOtherRoom", active.getReadableName());
+        assertEquals("activeInOtherRoom@email.com", active.getEmail());
         assertEquals("http://activeInOtherRoom:1234", active.getCallbackUrl());
         assertEquals("game otherRoom", active.getGame());
         assertEquals("{\"data\":4}", active.getData());
@@ -443,6 +455,7 @@ public class SaveServiceImplTest {
         assertEquals("activeSavedInOtherRoom", activeSaved.getId());
         assertEquals("code_activeSavedInOtherRoom", activeSaved.getCode());
         assertEquals("readable_activeSavedInOtherRoom", activeSaved.getReadableName());
+        assertEquals("activeSavedInOtherRoom@email.com", activeSaved.getEmail());
         assertEquals("http://activeSavedInOtherRoom:1234", activeSaved.getCallbackUrl());
         assertEquals("game otherRoom", activeSaved.getGame());
         assertEquals("{\"data\":3}", activeSaved.getData());
@@ -455,6 +468,7 @@ public class SaveServiceImplTest {
         assertEquals("savedInOtherRoom", saved.getId());
         assertEquals("code_savedInOtherRoom", saved.getCode());
         assertEquals("readable_savedInOtherRoom", saved.getReadableName());
+        assertEquals("savedInOtherRoom@email.com", saved.getEmail());
         assertEquals("http://savedInOtherRoom:2345", saved.getCallbackUrl());
         assertEquals("saved game otherRoom", saved.getGame());
         assertNull(saved.getData());
@@ -466,12 +480,26 @@ public class SaveServiceImplTest {
     }
 
     private void createUser(String id) {
-        Optional<Registration.User> user = Optional.of(new Registration.User() {{
+        Registration.User user = new Registration.User() {{
+            setId(id);
             setCode("code_" + id);
             setReadableName("readable_" + id);
-        }});
+            setEmail(id + "@email.com");
+        }};
+        users.add(user);
 
-        when(registration.getUserById(id)).thenReturn(user);
+        when(registration.getUserById(id)).thenReturn(Optional.of(user));
+        when(registration.getUsers()).thenReturn(users);
+        setup(users).when(registration).getUsers(anyCollection());
+    }
+
+    public Stubber setup(List<Registration.User> input) {
+        return doAnswer(inv -> {
+            List<Registration.User> result = new LinkedList<>(input);
+            Collection<String> argument = inv.getArgument(0);
+            result.removeIf(it -> !argument.contains(it.getId()));
+            return result;
+        });
     }
 
     private void scores(Player player, Object score) {
@@ -491,8 +519,19 @@ public class SaveServiceImplTest {
         long time = saveService.saveAll();
 
         // then
-        verify(saver).saveGame(players.get(0), "{\"key\":\"value1\"}", time);
-        verify(saver).saveGame(players.get(1), "{\"key\":\"value2\"}", time);
+        assertSaveAll(time, "[first, second]");
+    }
+
+    public void assertSaveAll(long time, String expected) {
+        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+        verify(saver).saveGames(captor.capture(), eq(time));
+        List<PlayerGame> playerGames = captor.getValue();
+        assertEquals(expected,
+                playerGames.stream()
+                        .map(PlayerGame::getPlayer)
+                        .map(Player::getId)
+                        .collect(toList())
+                        .toString());
     }
 
     @Test
@@ -510,8 +549,7 @@ public class SaveServiceImplTest {
         long time = saveService.saveAll("room1");
 
         // then
-        verify(saver).saveGame(players.get(0), "{\"key\":\"value1\"}", time);
-        verify(saver).saveGame(players.get(1), "{\"key\":\"value2\"}", time);
+        assertSaveAll(time, "[first, second]");
         verifyNoMoreInteractions(saver);
     }
 
@@ -525,10 +563,10 @@ public class SaveServiceImplTest {
         when(saver.getSavedList()).thenReturn(Arrays.asList("first", "second"));
         allPlayersNotRegistered();
 
-        PlayerSave first = mock(PlayerSave.class);
-        PlayerSave second = mock(PlayerSave.class);
-        when(saver.loadGame("first")).thenReturn(first);
-        when(saver.loadGame("second")).thenReturn(second);
+        PlayerSave first = save("room", "first");
+        PlayerSave second = save("room", "second");
+
+        setup(first, second).when(saver).loadAll(anyList());
 
         // when
         saveService.loadAll();
@@ -550,18 +588,11 @@ public class SaveServiceImplTest {
         createPlayer("second", "room2");
         createPlayer("third", "room1");
 
-        PlayerSave first = mock(PlayerSave.class);
-        when(first.getRoom()).thenReturn("room1");
+        PlayerSave first = save("room1", "first");
+        PlayerSave second = save("room2", "second");
+        PlayerSave third = save("room1", "third");
 
-        PlayerSave second = mock(PlayerSave.class);
-        when(second.getRoom()).thenReturn("room2");
-
-        PlayerSave third = mock(PlayerSave.class);
-        when(third.getRoom()).thenReturn("room1");
-
-        when(saver.loadGame("first")).thenReturn(first);
-        when(saver.loadGame("second")).thenReturn(second);
-        when(saver.loadGame("third")).thenReturn(third);
+        setup(first, second, third).when(saver).loadAll(anyList());
 
         // when
         saveService.loadAll("room1");
@@ -582,18 +613,11 @@ public class SaveServiceImplTest {
         when(saver.getSavedList("room1")).thenReturn(Arrays.asList("first", "third"));
         when(saver.getSavedList("room2")).thenReturn(Arrays.asList("second"));
 
-        PlayerSave first = mock(PlayerSave.class);
-        when(first.getRoom()).thenReturn("room1");
+        PlayerSave first = save("room1", "first");
+        PlayerSave second = save("room2", "second");
+        PlayerSave third = save("room1", "third");
 
-        PlayerSave second = mock(PlayerSave.class);
-        when(second.getRoom()).thenReturn("room2");
-
-        PlayerSave third = mock(PlayerSave.class);
-        when(third.getRoom()).thenReturn("room1");
-
-        when(saver.loadGame("first")).thenReturn(first);
-        when(saver.loadGame("second")).thenReturn(second);
-        when(saver.loadGame("third")).thenReturn(third);
+        setup(first, second, third).when(saver).loadAll(anyList());
 
         // when
         saveService.loadAll("room1");
@@ -608,6 +632,23 @@ public class SaveServiceImplTest {
         verifyNoMoreInteractions(playerService);
     }
 
+    public Stubber setup(PlayerSave... saves) {
+        return doAnswer(inv -> {
+            List<PlayerSave> result = new LinkedList<>(){{
+                addAll(Arrays.asList(saves));
+            }};
+            List<String> argument = inv.getArgument(0);
+            result.removeIf(it -> !argument.contains(it.getId()));
+            return result;
+        });
+    }
+
+    public PlayerSave save(String room, String id) {
+        PlayerSave result = mock(PlayerSave.class);
+        when(result.getRoom()).thenReturn(room);
+        when(result.getId()).thenReturn(id);
+        return result;
+    }
 
     private void allPlayersNotRegistered() {
         when(playerService.contains(anyString())).thenReturn(NOT_REGISTERED);
@@ -619,10 +660,10 @@ public class SaveServiceImplTest {
         when(saver.getSavedList()).thenReturn(Arrays.asList("first", "second"));
         allPlayersRegistered();
 
-        PlayerSave first = mock(PlayerSave.class);
-        PlayerSave second = mock(PlayerSave.class);
-        when(saver.loadGame("first")).thenReturn(first);
-        when(saver.loadGame("second")).thenReturn(second);
+        PlayerSave first = save("room", "first");
+        PlayerSave second = save("room", "second");
+
+        setup(first, second).when(saver).loadAll(anyList());
 
         // when
         saveService.loadAll();

@@ -43,6 +43,7 @@ public class DeikstraFindWay {
     private int size;
     private Possible checker;
     private boolean possibleIsConstant;
+    private Point reached;
 
     public DeikstraFindWay() {
         this(false);
@@ -122,8 +123,12 @@ public class DeikstraFindWay {
     }
 
     private Path getPath(Point from, List<Point> inputGoals) {
-        Set<Point> goals = new HashSet<>(inputGoals);
         Path path = new Path(size);
+        if (from == null || inputGoals.isEmpty()) {
+            return path;
+        }
+
+        Set<Point> goals = new HashSet<>(inputGoals);
         Vectors vectors = new Vectors(size, ways());
         vectors.add(inputGoals, from, 0);
         Vector current;
@@ -148,7 +153,11 @@ public class DeikstraFindWay {
             } else {
                 // do nothing
             }
-            goals.remove(current.from());
+            boolean remove = goals.remove(current.from());
+            if (remove) {
+                reached = current.from();
+                break;
+            }
         }
 
         return path;
@@ -215,5 +224,9 @@ public class DeikstraFindWay {
 
     public Points getDynamic() {
         return dynamic;
+    }
+
+    public Point getReached() {
+        return reached;
     }
 }

@@ -58,7 +58,7 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
         semifinal.clean();
         roomService.removeAll();
     }
-    
+
     protected Settings settings(String room) {
         return (Settings) new SemifinalSettingsImpl()
                     .setEnabled(true)
@@ -105,7 +105,109 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
         assertEquals(0, semifinal.getTime("room"));
     }
 
-    private SemifinalSettings<SettingsReader> updateSettings(String room) {
+    @Test
+    public void shouldGetSemifinalStatus() {
+        // given
+        Player player1 = createPlayerWithScore(100);
+        Player player2 = createPlayerWithScore(90);
+        Player player3 = createPlayerWithScore(80);
+        Player player4 = createPlayerWithScore(70);
+        Player player5 = createPlayerWithScore(60);
+        Player player6 = createPlayerWithScore(50);
+        Player player7 = createPlayerWithScore(40);
+        Player player8 = createPlayerWithScore(30);
+        Player player9 = createPlayerWithScore(20);
+        Player player10 = createPlayerWithScore(10);
+
+        updateSettings("room")
+                .setEnabled(true)
+                .setTimeout(3)
+                .setPercentage(true)
+                .setLimit(70)
+                .setResetBoard(true)
+                .setShuffleBoard(true);
+
+        assertEquals("SemifinalStatus(tick=0, count=10, enabled=true, " +
+                        "timeout=3, percentage=true, limit=70, " +
+                        "resetBoard=true, shuffleBoard=true)",
+                semifinal.getSemifinalStatus("room").toString());
+
+        // when then
+        semifinal.tick();
+        assertEquals("SemifinalStatus(tick=1, count=10, enabled=true, " +
+                        "timeout=3, percentage=true, limit=70, " +
+                        "resetBoard=true, shuffleBoard=true)",
+                semifinal.getSemifinalStatus("room").toString());
+
+        // when then
+        semifinal.tick();
+        assertEquals("SemifinalStatus(tick=2, count=10, enabled=true, " +
+                        "timeout=3, percentage=true, limit=70, " +
+                        "resetBoard=true, shuffleBoard=true)",
+                semifinal.getSemifinalStatus("room").toString());
+
+        // новый полуфинал
+        // when then
+        semifinal.tick();
+        assertEquals("SemifinalStatus(tick=0, count=7, enabled=true, " +
+                        "timeout=3, percentage=true, limit=70, " +
+                        "resetBoard=true, shuffleBoard=true)",
+                semifinal.getSemifinalStatus("room").toString());
+
+        // when then
+        semifinal.tick();
+        assertEquals("SemifinalStatus(tick=1, count=7, enabled=true, " +
+                        "timeout=3, percentage=true, limit=70, " +
+                        "resetBoard=true, shuffleBoard=true)",
+                semifinal.getSemifinalStatus("room").toString());
+
+        // when then
+        semifinal.tick();
+        assertEquals("SemifinalStatus(tick=2, count=7, enabled=true, " +
+                        "timeout=3, percentage=true, limit=70, " +
+                        "resetBoard=true, shuffleBoard=true)",
+                semifinal.getSemifinalStatus("room").toString());
+
+        // новый полуфинал
+        // when then
+        semifinal.tick();
+        assertEquals("SemifinalStatus(tick=0, count=5, enabled=true, " +
+                        "timeout=3, percentage=true, limit=70, " +
+                        "resetBoard=true, shuffleBoard=true)",
+                semifinal.getSemifinalStatus("room").toString());
+    }
+
+    @Test
+    public void shouldGetSemifinalStatus_ifThereIsNoSemifinalSettings() {
+        // given
+        Player player1 = createPlayerWithScore(100);
+        Player player2 = createPlayerWithScore(90);
+        Player player3 = createPlayerWithScore(80);
+        Player player4 = createPlayerWithScore(70);
+        Player player5 = createPlayerWithScore(60);
+        Player player6 = createPlayerWithScore(50);
+        Player player7 = createPlayerWithScore(40);
+        Player player8 = createPlayerWithScore(30);
+        Player player9 = createPlayerWithScore(20);
+        Player player10 = createPlayerWithScore(10);
+
+        noSemifinalFor("room");
+
+        // when then
+        assertEquals("SemifinalStatus(tick=null, count=10, enabled=false, " +
+                        "timeout=null, percentage=null, limit=null, " +
+                        "resetBoard=null, shuffleBoard=null)",
+                semifinal.getSemifinalStatus("room").toString());
+
+        // when then
+        semifinal.tick();
+        assertEquals("SemifinalStatus(tick=null, count=10, enabled=false, " +
+                        "timeout=null, percentage=null, limit=null, " +
+                        "resetBoard=null, shuffleBoard=null)",
+                semifinal.getSemifinalStatus("room").toString());
+    }
+
+        private SemifinalSettings<SettingsReader> updateSettings(String room) {
         return (SemifinalSettings<SettingsReader>) roomService.settings(room);
     }
 
@@ -215,6 +317,144 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
 
         // then
         assertActive(player1, player2);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1);
+    }
+
+    @Test
+    public void shouldCut30PercentUsers_checkThatThereWillBeOnlyOne() {
+        // given
+        Player player1 = createPlayerWithScore(100);
+        Player player2 = createPlayerWithScore(90);
+        Player player3 = createPlayerWithScore(80);
+        Player player4 = createPlayerWithScore(70);
+        Player player5 = createPlayerWithScore(60);
+        Player player6 = createPlayerWithScore(50);
+        Player player7 = createPlayerWithScore(40);
+        Player player8 = createPlayerWithScore(30);
+        Player player9 = createPlayerWithScore(20);
+        Player player10 = createPlayerWithScore(10);
+
+        updateSettings("room")
+                .setPercentage(true)
+                .setLimit(70);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3, player4, player5, player6, player7);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3, player4, player5);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1);
+    }
+
+    @Test
+    public void shouldCut1PercentUsers_checkThatThereWillBeOnlyOne() {
+        // given
+        Player player1 = createPlayerWithScore(100);
+        Player player2 = createPlayerWithScore(90);
+        Player player3 = createPlayerWithScore(80);
+        Player player4 = createPlayerWithScore(70);
+        Player player5 = createPlayerWithScore(60);
+        Player player6 = createPlayerWithScore(50);
+        Player player7 = createPlayerWithScore(40);
+        Player player8 = createPlayerWithScore(30);
+        Player player9 = createPlayerWithScore(20);
+        Player player10 = createPlayerWithScore(10);
+
+        updateSettings("room")
+                .setPercentage(true)
+                .setLimit(99);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3, player4, player5,
+                player6, player7, player8, player9);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3, player4, player5,
+                player6, player7, player8);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3, player4, player5,
+                player6, player7);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3, player4, player5,
+                player6);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3, player4, player5);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3, player4);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2, player3);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1, player2);
+
+        // when
+        ticksTillTimeout();
+
+        // then
+        assertActive(player1);
 
         // when
         ticksTillTimeout();
@@ -343,7 +583,7 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     }
 
     @Test
-    public void shouldCut30PercentUsers_whenNotAccurateCut() {
+    public void shouldCut70PercentUsers_whenNotAccurateCut() {
         // given
         Player player1 = createPlayerWithScore(100);
         Player player2 = createPlayerWithScore(90);
@@ -386,7 +626,7 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     }
 
     @Test
-    public void shouldCut1PercentUsers_whenNotAccurateCut() {
+    public void shouldCut99PercentUsers_whenNotAccurateCut() {
         // given
         Player player1 = createPlayerWithScore(100);
         Player player2 = createPlayerWithScore(90);
@@ -417,7 +657,7 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     }
 
     @Test
-    public void shouldCut1PercentUsers_whenNotAccurateCut_caseTwoPlayers() {
+    public void shouldCut99PercentUsers_whenNotAccurateCut_caseTwoPlayers() {
         // given
         Player player1 = createPlayerWithScore(100);
         Player player2 = createPlayerWithScore(50);
@@ -434,7 +674,7 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     }
 
     @Test
-    public void shouldCut20PercentUsers_whenAccurateCut() {
+    public void shouldCut80PercentUsers_whenAccurateCut() {
         // given
         Player player1 = createPlayerWithScore(100);
         Player player2 = createPlayerWithScore(90);
@@ -459,7 +699,7 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     }
 
     @Test
-    public void shouldCut20PercentUsers_whenAccurateCut_mixedScoreOrder() {
+    public void shouldCut80PercentUsers_whenAccurateCut_mixedScoreOrder() {
         // given
         Player player1 = createPlayerWithScore(100);
         Player player2 = createPlayerWithScore(80);
@@ -572,11 +812,11 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     public void shouldCleanScoresAfterCut_whenSetResetBoard_caseTournament() {
         // given
         int winner = 100;
-        int looser = 1;
+        int loser = 1;
         Player player1 = createPlayerWithScore(winner, "player1", MultiplayerType.TOURNAMENT);
-        Player player2 = createPlayerWithScore(looser, "player2", MultiplayerType.TOURNAMENT);
+        Player player2 = createPlayerWithScore(loser, "player2", MultiplayerType.TOURNAMENT);
         Player player3 = createPlayerWithScore(winner, "player3", MultiplayerType.TOURNAMENT);
-        Player player4 = createPlayerWithScore(looser, "player4", MultiplayerType.TOURNAMENT);
+        Player player4 = createPlayerWithScore(loser, "player4", MultiplayerType.TOURNAMENT);
 
         updateSettings("room")
                 .setResetBoard(true);
@@ -604,14 +844,14 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     public void shouldCleanScoresAfterCut_whenSetResetBoard_caseTriple() {
         // given
         int winner = 100;
-        int looser = 1;
+        int loser = 1;
         Player player1 = createPlayerWithScore(winner, "player1", MultiplayerType.TRIPLE);
-        Player player2 = createPlayerWithScore(looser, "player2", MultiplayerType.TRIPLE);
-        Player player3 = createPlayerWithScore(looser, "player3", MultiplayerType.TRIPLE);
+        Player player2 = createPlayerWithScore(loser, "player2", MultiplayerType.TRIPLE);
+        Player player3 = createPlayerWithScore(loser, "player3", MultiplayerType.TRIPLE);
         Player player4 = createPlayerWithScore(winner, "player4", MultiplayerType.TRIPLE);
         Player player5 = createPlayerWithScore(winner, "player5", MultiplayerType.TRIPLE);
-        Player player6 = createPlayerWithScore(looser, "player6", MultiplayerType.TRIPLE);
-        Player player7 = createPlayerWithScore(looser, "player7", MultiplayerType.TRIPLE);
+        Player player6 = createPlayerWithScore(loser, "player6", MultiplayerType.TRIPLE);
+        Player player7 = createPlayerWithScore(loser, "player7", MultiplayerType.TRIPLE);
         Player player8 = createPlayerWithScore(winner, "player8", MultiplayerType.TRIPLE);
 
         updateSettings("room")
@@ -634,21 +874,21 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     public void shouldCleanScoresAfterCut_whenSetResetBoard_caseTriple_whenSeveralRooms() {
         // given
         int winner = 100;
-        int looser = 1;
+        int loser = 1;
         createPlayerWithScore(winner, "player1-1", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-1", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-2", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-2", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-3", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-3", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-2", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-2", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-3", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-3", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-4", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-4", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-5", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-5", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-6", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-6", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-7", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-7", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-6", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-6", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-7", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-7", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-8", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-8", "room2", MultiplayerType.TRIPLE);
 
@@ -681,21 +921,21 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     public void shouldCleanScoresAfterCut_whenNotSetResetBoard_caseTriple_whenSeveralRooms() {
         // given
         int winner = 100;
-        int looser = 1;
+        int loser = 1;
         createPlayerWithScore(winner, "player1-1", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-1", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-2", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-2", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-3", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-3", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-2", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-2", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-3", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-3", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-4", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-4", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-5", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-5", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-6", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-6", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-7", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-7", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-6", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-6", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-7", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-7", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-8", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-8", "room2", MultiplayerType.TRIPLE);
 
@@ -731,21 +971,21 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     public void shouldCleanScoresAfterCut_whenSetResetBoard_caseTriple_whenSeveralRooms_someIsNotActive() {
         // given
         int winner = 100;
-        int looser = 1;
+        int loser = 1;
         createPlayerWithScore(winner, "player1-1", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-1", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-2", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-2", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-3", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-3", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-2", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-2", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-3", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-3", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-4", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-4", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-5", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-5", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-6", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-6", "room2", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player1-7", "room1", MultiplayerType.TRIPLE);
-        createPlayerWithScore(looser, "player2-7", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-6", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-6", "room2", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player1-7", "room1", MultiplayerType.TRIPLE);
+        createPlayerWithScore(loser, "player2-7", "room2", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player1-8", "room1", MultiplayerType.TRIPLE);
         createPlayerWithScore(winner, "player2-8", "room2", MultiplayerType.TRIPLE);
 
@@ -782,14 +1022,14 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
     public void shouldCleanScoresAfterCut_whenSetResetBoard_caseTriple_shuffle() {
         // given
         int winner = 100;
-        int looser = 1;
+        int loser = 1;
         Player player1 = createPlayerWithScore(winner, "player1", MultiplayerType.TRIPLE);
-        Player player2 = createPlayerWithScore(looser, "player2", MultiplayerType.TRIPLE);
-        Player player3 = createPlayerWithScore(looser, "player3", MultiplayerType.TRIPLE);
+        Player player2 = createPlayerWithScore(loser, "player2", MultiplayerType.TRIPLE);
+        Player player3 = createPlayerWithScore(loser, "player3", MultiplayerType.TRIPLE);
         Player player4 = createPlayerWithScore(winner, "player4", MultiplayerType.TRIPLE);
         Player player5 = createPlayerWithScore(winner, "player5", MultiplayerType.TRIPLE);
-        Player player6 = createPlayerWithScore(looser, "player6", MultiplayerType.TRIPLE);
-        Player player7 = createPlayerWithScore(looser, "player7", MultiplayerType.TRIPLE);
+        Player player6 = createPlayerWithScore(loser, "player6", MultiplayerType.TRIPLE);
+        Player player7 = createPlayerWithScore(loser, "player7", MultiplayerType.TRIPLE);
         Player player8 = createPlayerWithScore(winner, "player8", MultiplayerType.TRIPLE);
 
         updateSettings("room")
@@ -1056,10 +1296,7 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
         original.setPercentage(false)
                 .setLimit(10);
 
-        // эмулирую другой тип сеттингов, который без semifinal
-        GameType gameType = mock(GameType.class);
-        when(gameType.getSettings()).thenReturn(new SettingsImpl());
-        roomService.state("room").get().setType(gameType);
+        noSemifinalFor("room");
 
         // when
         SemifinalSettingsImpl settings = semifinal.semifinalSettings("room");
@@ -1067,5 +1304,12 @@ public class SemifinalServiceTest extends AbstractPlayerGamesTest {
         // then
         assertNotSame(original.toString(), settings.toString());
         assertEquals("SettingsImpl(map={})", settings.toString());
+    }
+
+    // эмулирую другой тип сеттингов, который без semifinal
+    public void noSemifinalFor(String room) {
+        GameType gameType = mock(GameType.class);
+        when(gameType.getSettings()).thenReturn(new SettingsImpl());
+        roomService.state(room).get().setType(gameType);
     }
 }

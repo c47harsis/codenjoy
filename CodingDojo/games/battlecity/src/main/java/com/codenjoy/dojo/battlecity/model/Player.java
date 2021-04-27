@@ -43,6 +43,13 @@ public class Player extends RoundGamePlayer<Tank, Field> {
         reset();
     }
 
+    @Override
+    public void start(int round, Object startEvent) {
+        super.start(round, startEvent);
+        // hero.reset(); TODO test me
+        // rest();
+    }
+
     public void reset() {
         killed = 0;
     }
@@ -64,7 +71,8 @@ public class Player extends RoundGamePlayer<Tank, Field> {
         return killed++;
     }
 
-    public void newHero(Field field) {
+    @Override
+    public void initHero(Field field) {
         if (hero != null) {
             hero.setPlayer(null);
             hero = null;
@@ -79,10 +87,6 @@ public class Player extends RoundGamePlayer<Tank, Field> {
         hero.removeBullets();
         hero.init(field);
         reset();
-
-        if (!roundsEnabled()) {
-            hero.setActive(true);
-        }
     }
 
     public int score() {

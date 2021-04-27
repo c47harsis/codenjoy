@@ -24,17 +24,18 @@ package com.codenjoy.dojo.bomberman.model;
 
 import com.codenjoy.dojo.bomberman.model.perks.PerksSettingsWrapper;
 import com.codenjoy.dojo.bomberman.TestGameSettings;
+import com.codenjoy.dojo.bomberman.services.Events;
 import com.codenjoy.dojo.bomberman.services.GameSettings;
 import com.codenjoy.dojo.services.*;
 import com.codenjoy.dojo.services.multiplayer.Single;
 import com.codenjoy.dojo.services.printer.PrinterFactory;
 import com.codenjoy.dojo.services.printer.PrinterFactoryImpl;
+import com.codenjoy.dojo.utils.events.EventsListenersAssert;
 import org.junit.Before;
 import org.mockito.stubbing.OngoingStubbing;
 
 import java.util.Arrays;
 
-import static com.codenjoy.dojo.bomberman.model.EventsListenersAssert.getEvents;
 import static com.codenjoy.dojo.bomberman.services.GameSettings.Keys.*;
 import static com.codenjoy.dojo.services.PointImpl.pt;
 import static com.codenjoy.dojo.services.settings.SimpleParameter.v;
@@ -56,20 +57,19 @@ public class AbstractGameTest {
     protected Bomberman field;
     private PrinterFactory printer;
     protected PerksSettingsWrapper perks;
+    protected EventsListenersAssert events;
 
     @Before
     public void setUp() {
-        printer = new PrinterFactoryImpl();
+        dice = mock(Dice.class);
+        chopperDice = mock(Dice.class);
         settings = spy(new TestGameSettings());
+        printer = new PrinterFactoryImpl();
+        events = new EventsListenersAssert(() -> Arrays.asList(listener), Events.class);
         perks = settings.perksSettings();
         bombsPower(1);
 
         givenWalls();
-
-        chopperDice = mock(Dice.class);
-        dice = mock(Dice.class);
-
-        listener = mock(EventListener.class);
 
         withWalls(walls);
 
@@ -87,6 +87,7 @@ public class AbstractGameTest {
     protected void givenBoard(int size, int x, int y) {
         settings.integer(BOARD_SIZE, size);
         field = new Bomberman(dice, settings);
+        listener = mock(EventListener.class);
         player = new Player(listener, settings);
         game = new Single(player, printer);
         game.on(field);
@@ -234,9 +235,5 @@ public class AbstractGameTest {
         chopper.stop();
         walls.add(chopper);
         return chopper;
-    }
-
-    protected void verifyAllEvents(String expected) {
-        assertEquals(expected, getEvents(listener));
     }
 }

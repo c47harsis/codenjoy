@@ -23,7 +23,10 @@ package com.codenjoy.dojo.services;
  */
 
 
+import com.codenjoy.dojo.services.semifinal.SemifinalStatus;
+
 import java.util.List;
+import java.util.Map;
 
 public interface PlayerService extends Tickable {
 
@@ -36,11 +39,12 @@ public interface PlayerService extends Tickable {
     void update(Player player);
     boolean contains(String id);
     Player get(String id);
-    void updateAll(List<PlayerInfo> players);
+    void updateAll(List<? extends Player> players);
     void removeAll();
     void removeAll(String room);
     Player getRandom(String game);
     GameType getAnyGameWithPlayers();
+    Map<String, Integer> getRoomCounts();
 
     void cleanAllScores();
     void cleanAllScores(String room);
@@ -57,4 +61,6 @@ public interface PlayerService extends Tickable {
     void openRegistration();
 
     void reloadAI(String id);
+
+    SemifinalStatus getSemifinalStatus(String room);
 }
