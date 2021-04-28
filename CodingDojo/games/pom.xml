@@ -42,6 +42,8 @@
         <user.resources>src/main/webapp/resources/user</user.resources>
         <client.sources>${user.resources}/${module.name}-servers.zip</client.sources>
         <client.java.package>java/com/codenjoy/dojo/${module.name}</client.java.package>
+
+        <markdown-page-generator-plugin.version>2.3.1-SNAPSHOT</markdown-page-generator-plugin.version>
     </properties>
 
     <repositories>
@@ -238,6 +240,8 @@
                     <include>**/*</include>
                 </includes>
                 <excludes>
+                    <exclude>resources/help/footer.html</exclude>
+                    <exclude>resources/help/header.html</exclude>
                     <exclude>**/sprite/**/src/*</exclude>
                 </excludes>
             </resource>
@@ -250,6 +254,30 @@
         </resources>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>com.ruleoftech</groupId>
+                    <artifactId>markdown-page-generator-plugin</artifactId>
+                    <version>${markdown-page-generator-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <phase>process-resources</phase>
+                            <goals>
+                                <goal>generate</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <!--Read about config here: https://github.com/walokra/markdown-page-generator-plugin-->
+                        <pegdownExtensions>EXTANCHORLINKS,TOC,FOOTNOTES,FENCED_CODE_BLOCKS</pegdownExtensions>
+                        <flexmarkRendererOptions>HEADER_ID_GENERATOR_RESOLVE_DUPES</flexmarkRendererOptions>
+                        <applyFiltering>true</applyFiltering>
+                        <transformRelativeMarkdownLinks>true</transformRelativeMarkdownLinks>
+                        <inputDirectory>${project.basedir}/help/</inputDirectory>
+                        <outputDirectory>${project.basedir}/target/classes/resources/help/</outputDirectory>
+                        <headerHtmlFile>${project.basedir}/src/main/webapp/resources/help/header.html</headerHtmlFile>
+                        <footerHtmlFile>${project.basedir}/src/main/webapp/resources/help/header.html</footerHtmlFile>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>buildnumber-maven-plugin</artifactId>

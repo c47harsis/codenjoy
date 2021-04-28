@@ -24,8 +24,6 @@ pages = pages || {};
 pages.rules = function() {
     var parts = window.location.pathname.split('/');
     var contextPath = parts[1];
-    var base = window.location.origin + '/' + contextPath + '/';
-    document.head.innerHTML = document.head.innerHTML + "<base target='_blank' href='" + base + "' />";
 
     $('pre').each(function(i, e) {
         var content = $(this).html();
